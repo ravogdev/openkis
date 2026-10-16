@@ -172,7 +172,7 @@ in files under `misc/_cache/`. Adding `php8.3-apcu` to the Dockerfile would
 make those lookups a memory read and would allow caching the per-request
 schema work (#12) across requests.
 
-Done (issue #22): the image installs `php8.3-apcu` (`apc.shm_size = 128M`,
+Done (issue #22): the image installs `php8.3-apcu` (`apc.shm_size = 256M`, sized for about 10000 caves,
 CLI left disabled). finis already prefers APCu in `FN_GetGlobalVarValue`;
 `FN_ClearCache()` now empties APCu too, so the control center's cache clear
 works as it did with files. Map cache entries are stored with a ttl equal to
