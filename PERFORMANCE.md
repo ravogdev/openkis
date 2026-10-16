@@ -186,6 +186,17 @@ with `SHOW TABLES` / `DESCRIBE` to sync columns. These are cached only in
 `static` variables for the current request. With APCu (#11) these results
 could be cached across requests and invalidated on the descriptor's mtime.
 
+Done (issue #23, finis `schema-cache`): descriptor parsing
+(`xmetadb_xml2array`, `get_xml_single_element`) and the MySQL `DESCRIBE`
+result are kept in APCu. Keys include the descriptor content, so editing a
+descriptor parses it again and still adds new columns. A cache hit skips
+`SHOW TABLES` and `DESCRIBE`; `$_FN['xmetadb_mysql_schema_cache_ttl']`
+(default 600 s, 0 = off) bounds how long a table changed outside OpenKIS goes
+unnoticed, and the control center's cache clear empties it. `SET NAMES` now
+runs once per connection instead of once per table. Measured on the demo
+install: queries per page went from 42 to 24 (home), 68 to 38 (cave list) and
+121 to 69 (cave view).
+
 ### 13. Id generation
 
 `GetAutoincrement()` scans the table with `MAX(CAST(id AS UNSIGNED))` on each
