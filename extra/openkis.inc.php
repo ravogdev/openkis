@@ -194,8 +194,9 @@ function openkis_MapCacheSet($key, $stamp, $data)
 }
 
 /**
- * Drops every cached map export and recalculates the coordinates, e.g. after
- * the caves data were changed directly in the database.
+ * Drops every cached map export, recalculates the coordinates and re-syncs
+ * the record id counters, e.g. after the data were changed directly in the
+ * database.
  *
  * @return array what was done, one line per step
  */
@@ -232,6 +233,38 @@ function openkis_RefreshMapData()
             openkis_UpdateCoords($mod, true);
             $done[] = "$mod: " . FN_Translate("coordinates recalculated");
         }
+    }
+    $done = array_merge($done, openkis_SyncRecordIds());
+    return $done;
+}
+
+/**
+ * Moves the counters that give the ids of new records past the highest id in
+ * each MySQL table, e.g. after records were inserted directly in the
+ * database. Without it finis notices a taken id on the next insert and
+ * re-syncs that counter by itself.
+ *
+ * @return array what was done, one line per counter
+ */
+function openkis_SyncRecordIds()
+{
+    global $_FN;
+    $done = array();
+    foreach (glob("{$_FN['datadir']}/{$_FN['database']}/*.php") as $file)
+    {
+        $table = FN_XMDBTable(basename($file, ".php"));
+        if (!$table || !method_exists($table, "SyncAutoincrement"))
+        {
+            continue;
+        }
+        foreach ($table->SyncAutoincrement() as $field => $next)
+        {
+            $done[] = "{$table->tablename}: " . FN_Translate("next record id") . " $next";
+        }
+    }
+    if (empty($done))
+    {
+        $done[] = FN_Translate("record id counters: nothing to re-sync");
     }
     return $done;
 }

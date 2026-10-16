@@ -2,9 +2,10 @@
 /**
  * Control center -> Utilities -> Refresh map data
  *
- * Drops the cached map exports (KML, GPX, JSON, markers) and recalculates the
- * coordinates. Needed after the caves data were changed directly in the
- * database: edits made through OpenKIS refresh the maps by themselves.
+ * Drops the cached map exports (KML, GPX, JSON, markers), recalculates the
+ * coordinates and re-syncs the counters that give the ids of new records.
+ * Needed after the data were changed directly in the database: edits made
+ * through OpenKIS refresh the maps by themselves.
  * Same as "php refresh-cache.php" from the command line.
  */
 defined('_FNEXEC') or die('Restricted access');

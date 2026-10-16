@@ -1,8 +1,8 @@
 <?php
 /**
- * Refreshes the cached map exports (KML, GPX, JSON, markers) and recalculates
- * the coordinates, e.g. after the caves data were changed directly in the
- * database. Same as Control center -> Utilities -> Refresh map data.
+ * Refreshes the cached map exports (KML, GPX, JSON, markers), recalculates
+ * the coordinates and re-syncs the counters that give the ids of new records,
+ * e.g. after the data were changed directly in the database. Same as Control center -> Utilities -> Refresh map data.
  *
  *   php refresh-cache.php
  *   docker compose exec -u www-data web php /var/www/html/refresh-cache.php
