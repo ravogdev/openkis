@@ -81,6 +81,7 @@ jobs:
                 | grep -ioE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' \
                 | grep -oE '[0-9]+$' || true
             } | sort -un)
+            echo "::notice::Linked issues: ${numbers:-none}"
             issues=""
             for number in $numbers; do
               # shellcheck disable=SC2016 # GraphQL $variables stay literal
@@ -94,7 +95,7 @@ jobs:
             done
           fi
           if [ -z "$issues" ]; then
-            echo "No open linked issues, nothing to do."
+            echo "::notice::No open linked issues, nothing to do."
             exit 0
           fi
 
@@ -138,5 +139,5 @@ jobs:
               }' \
               -f project="$project_id" -f item="$item_id" -f field="$field_id" -f option="$option_id" \
               > /dev/null
-            echo "Moved issue $issue to $STATUS_NAME."
+            echo "::notice::Moved issue $issue to $STATUS_NAME."
           done
