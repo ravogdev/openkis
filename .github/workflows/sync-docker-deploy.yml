@@ -1,0 +1,63 @@
+# Keeps the docker-deploy branch in step with develop: every push to develop
+# fast-forwards docker-deploy to the same commit (finis submodule pointer
+# included), so deploying from docker-deploy gives the same code as develop.
+#
+# Only fast-forwards. If docker-deploy has commits that develop lacks, the job
+# fails with an annotation and leaves the branch alone: merge those commits
+# into develop first, then re-run it (Actions -> Sync docker-deploy -> Run).
+#
+# Token: by default it pushes with the workflow's own GITHUB_TOKEN. GitHub
+# refuses that token for pushes that bring in changes under .github/workflows/
+# (this file included, on the first sync), so the job then fails. To cover
+# those pushes, save a token with the `repo` and `workflow` scopes as the
+# repository secret SYNC_TOKEN; it is used instead when set.
+
+name: Sync docker-deploy
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-docker-deploy
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Fast-forward docker-deploy to develop
+        run: |
+          set -eu
+          target=$(git rev-parse HEAD)
+          if ! git ls-remote --exit-code --heads origin docker-deploy >/dev/null; then
+            echo "::warning::docker-deploy does not exist, nothing to sync"
+            exit 0
+          fi
+          git fetch --no-tags origin docker-deploy
+          current=$(git rev-parse FETCH_HEAD)
+          if [ "$current" = "$target" ]; then
+            echo "docker-deploy is already at develop ($target)"
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor "$current" "$target"; then
+            echo "::error::docker-deploy has commits that develop lacks; merge them into develop, then re-run this workflow"
+            git log --oneline "$target..$current"
+            exit 1
+          fi
+          # no --force: GitHub rejects the push if it is not a fast-forward
+          if ! git push origin "$target:refs/heads/docker-deploy"; then
+            echo "::error::push to docker-deploy refused; if the new commits change .github/workflows/, set the SYNC_TOKEN secret (see the top of this file) and re-run"
+            exit 1
+          fi
+          echo "::notice::docker-deploy fast-forwarded ${current:0:7} -> ${target:0:7} ($(git rev-list --count "$current..$target") commits)"
