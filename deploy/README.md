@@ -27,6 +27,7 @@ docker-compose.yml     web (OpenKIS, image robydoc/openkis-web:latest) + db (Mar
 docker-compose.build.yml  optional override: build the image from this checkout
 .env.example           all settings; copy to .env
 backup.sh              dumps the database and misc/ into ./backups/
+smoke-test.sh          builds the image and tests it on a throwaway stack
 docker/entrypoint.sh   installs/upgrades code in the volume, writes the config from .env
 docker/apache-openkis.conf, docker/php.ini
 patches/               optional extra patches applied at build (empty)
@@ -331,6 +332,14 @@ Artificials, Settings and control center pages with no PHP or JS errors,
 demo cave import, JSON/KML/GPX/Shapefile exports, Liguria PDF cave sheet
 (`OPENKIS_CUSTOM=liguria`), MCP endpoint (401 without a key), image upgrade on
 an existing volume, `down`/`up` with data kept, `backup.sh`.
+
+Automated: `deploy/smoke-test.sh` builds the image from the checkout and runs
+it on a throwaway stack (own project, port 8099, volumes removed afterwards):
+setup wizard, home, Caves, caves map, control center, demo cave import,
+Refresh map data, map exports, APCu, no PHP errors. The *Sync docker-deploy*
+workflow runs it on every pull request into `develop` and every push to
+`develop`, and moves the `docker-deploy` branch to a `develop` commit only
+after it passes.
 
 Not tested: a real hostname with TLS, e-mail, photo/survey uploads through the
 UI, the other regional customisations.
