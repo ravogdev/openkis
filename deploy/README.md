@@ -198,6 +198,11 @@ docker compose exec -u www-data web php /var/www/html/refresh-cache.php
 Otherwise they are rebuilt within an hour
 (`$_FN['openkis_map_cache_maxage']`, seconds; 0 disables the cache).
 
+The same command also re-syncs the counters that give the ids of new records
+(the `fn_sequences` table), so records added afterwards through OpenKIS
+continue after the highest id inserted directly. Without it OpenKIS notices a
+taken id on the next insert and re-syncs that counter by itself.
+
 The image has APCu, so this cache (and the rest of finis's cross-request
 cache) is kept in the web server's memory instead of files in `misc/_cache/`
 (`apc.shm_size` in `docker/php.ini`). It is emptied by the two refreshes above,

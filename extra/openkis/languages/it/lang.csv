@@ -59,5 +59,7 @@
 "marked as changed","segnata come modificata"
 "cache cleared","cache svuotata"
 "coordinates recalculated","coordinate ricalcolate"
+"next record id","prossimo id record"
+"record id counters: nothing to re-sync","contatori degli id dei record: nulla da riallineare"
 "The maps are refreshed automatically when the data are changed through OpenKIS. After changing the data directly in the database, use this button to refresh them now.","Le mappe si aggiornano da sole quando i dati vengono modificati tramite OpenKIS. Dopo aver modificato i dati direttamente nel database, usa questo pulsante per aggiornarle subito."
 
