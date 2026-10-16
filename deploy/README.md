@@ -198,6 +198,14 @@ docker compose exec -u www-data web php /var/www/html/refresh-cache.php
 Otherwise they are rebuilt within an hour
 (`$_FN['openkis_map_cache_maxage']`, seconds; 0 disables the cache).
 
+The image has APCu, so this cache (and the rest of finis's cross-request
+cache) is kept in the web server's memory instead of files in `misc/_cache/`
+(`apc.shm_size` in `docker/php.ini`). It is emptied by the two refreshes above,
+by the control center when the site changes, and by restarting the web
+container. With more than one web container behind a load balancer each
+keeps its own copy, and a control center cache clear empties only the one
+that served the request.
+
 ### Backup and restore
 
 ```bash
