@@ -190,7 +190,11 @@ function openkis_MapCacheGet($key, $tablename)
  */
 function openkis_MapCacheSet($key, $stamp, $data)
 {
-    FN_SetGlobalVarValue($key, array('stamp' => $stamp, 'time' => time(), 'data' => $data));
+    global $_FN;
+    // with APCu, entries past maxage are dropped from memory instead of
+    // waiting for the store to fill up (the file cache ignores the ttl)
+    $maxage = isset($_FN['openkis_map_cache_maxage']) ? intval($_FN['openkis_map_cache_maxage']) : 3600;
+    FN_SetGlobalVarValue($key, array('stamp' => $stamp, 'time' => time(), 'data' => $data), max(0, $maxage));
 }
 
 /**

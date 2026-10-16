@@ -203,6 +203,14 @@ The same command also re-syncs the counters that give the ids of new records
 continue after the highest id inserted directly. Without it OpenKIS notices a
 taken id on the next insert and re-syncs that counter by itself.
 
+The image has APCu, so this cache (and the rest of finis's cross-request
+cache) is kept in the web server's memory instead of files in `misc/_cache/`
+(`apc.shm_size` in `docker/php.ini`). It is emptied by the two refreshes above,
+by the control center when the site changes, and by restarting the web
+container. With more than one web container behind a load balancer each
+keeps its own copy, and a control center cache clear empties only the one
+that served the request.
+
 ### Backup and restore
 
 ```bash
