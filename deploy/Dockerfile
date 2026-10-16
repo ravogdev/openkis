@@ -1,5 +1,6 @@
 # OpenKIS web image: Ubuntu 24.04 + Apache 2.4 + PHP 8.3 (mod_php) with the
-# extensions the code uses (mysqli, gd, exif, curl, mbstring, xml, zip).
+# extensions the code uses (mysqli, gd, exif, curl, mbstring, xml, zip) and
+# APCu, the in-memory cache finis uses instead of files in misc/_cache/.
 #
 # The OpenKIS source (with the finis submodule checked out) is taken from the
 # "openkis" build context; deploy/docker-compose.yml points it at the
@@ -21,7 +22,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         apache2 libapache2-mod-php8.3 \
         php8.3-cli php8.3-mysql php8.3-gd php8.3-mbstring php8.3-xml \
-        php8.3-curl php8.3-zip \
+        php8.3-curl php8.3-zip php8.3-apcu \
         mariadb-client rsync patch ca-certificates tzdata curl; \
     rm -rf /var/lib/apt/lists/*; \
     a2enmod rewrite headers expires php8.3; \
