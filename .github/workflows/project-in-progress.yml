@@ -1,7 +1,7 @@
 # Moves issues to "In progress" on the OpenKIS project board when work starts:
 # - a pull request is opened (draft included), reopened, marked ready or edited
-#   and links an issue ("Fixes #N", "Closes #N" or "Resolves #N" in its
-#   description, or the Development sidebar);
+#   and links an issue ("Fixes #N", "Closes #N", "Resolves #N", "Refs #N" or
+#   "Part of #N" in its description, or the Development sidebar);
 # - an issue is assigned to someone.
 # Closed issues are left alone; the board's built-in workflows move closed
 # issues and merged pull requests to Done.
@@ -77,10 +77,12 @@ jobs:
               -f owner="${REPO%/*}" -f name="${REPO#*/}" -F number="$PR_NUMBER")
             numbers=$( {
               jq -r '.data.repository.pullRequest.closingIssuesReferences.nodes[].number' <<<"$pr"
+              # Closing keywords, plus "Refs #N" / "Part of #N" for work that
+              # touches an issue without closing it
               jq -r '.data.repository.pullRequest.body // ""' <<<"$pr" \
-                | grep -ioE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' \
+                | grep -ioE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?|references|part of):?[[:space:]]+#[0-9]+' \
                 | grep -oE '[0-9]+$' || true
-            } | sort -un)
+            } | sort -un | tr "\n" " ")
             echo "::notice::Linked issues: ${numbers:-none}"
             issues=""
             for number in $numbers; do
