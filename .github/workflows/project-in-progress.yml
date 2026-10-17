@@ -15,18 +15,13 @@
 # PROJECT_IN_PROGRESS (default: "In progress", the Status option to set).
 # The job is skipped until PROJECT_NUMBER is set.
 #
-# GitHub runs pull_request_target with the workflow of the pull request's base
-# branch and issue events with the one on the default branch (master), so the
+# GitHub runs issue events with the workflow on the default branch, so the
 # "assigned" trigger only fires once this file is on that branch.
 
 name: Board - move to In progress
 
-# pull_request_target runs this file from the base branch (develop), so a
-# change here applies at once to every open pull request, not only to the
-# ones whose merge ref already includes it. It never checks out the pull
-# request's code: the description is read through the API.
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, ready_for_review, edited]
   issues:
     types: [assigned]
