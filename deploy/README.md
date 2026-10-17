@@ -317,7 +317,7 @@ restarts; trust it only on your own machines.
 - `openkis_proxy.php` is an open HTTP proxy (SSRF). It is blocked unless
   `OPENKIS_ENABLE_PROXY=1`; only the Lombardia IGM map layer needs it.
 - The finis query layer still evaluates `WHERE` clauses with PHP `eval()`.
-  The `php8-compat` finis branch strips `` ` $ { } `` from them before
+  The finis `develop` branch strips `` ` $ { } `` from them before
   evaluation, which closes the known code-execution path through a cave's
   fauna field; replacing `eval()` altogether is still advisable.
 - Outgoing e-mail (registration confirmation) uses PHP `mail()`, which has no

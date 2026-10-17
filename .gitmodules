@@ -1,4 +1,4 @@
 [submodule "finis"]
 	path = finis
 	url = https://github.com/ravogdev/finis.git
-	branch = php8-compat
+	branch = develop
