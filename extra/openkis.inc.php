@@ -364,14 +364,12 @@ function openkis_GetItemPosition($row)
             $coordinatestypes = "GEOWGS84";
         else
             $coordinatestypes = "UTMWGS8432";
-        if ($lat_ori == "" && $lon_ori == "")
-        {
-            
-        }
-        else
-        {
-            dprint_r("$lat_ori,$lon_ori, coordinatestypes vuoto per {$row['code']} - force $coordinatestypes ", "", "red");
-        }
+        // the type is guessed: log it for the admins (container logs), and
+        // print it in the page only for an admin asking for ?debug
+        $msg = "$lat_ori,$lon_ori, coordinatestypes vuoto per {$row['code']} - force $coordinatestypes";
+        error_log("openkis: $msg");
+        if (isset($_GET['debug']) && FN_IsAdmin())
+            dprint_r($msg, "", "red");
     }
 
     $items_ct = XMETAFKLookup::GetRecord($table_coordinatestypes, "coordinates_type", $coordinatestypes, "proj4");
