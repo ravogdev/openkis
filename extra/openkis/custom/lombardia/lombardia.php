@@ -117,37 +117,46 @@ function GeneraNumero($values)
 }
 
 /**
- * 
+ * Installs the Lombardia table definition of the caves table
+ * (custom/lombardia/ctl_caves.php) in the data directory.
+ *
+ * Runs on every request, so the fast path is one stat of the custom file and
+ * one read of a small sentinel that records which version of it was last
+ * installed. The definition is copied only when the custom file changed since
+ * then and differs from the installed one, so it is applied on a fresh install
+ * too (where the generic definition was just copied with a newer mtime) and a
+ * definition already in place is left alone.
  */
 function InizializzaDB()
 {
-
-    if (!file_exists("misc/fndatabase/ctl_caves.php") || filemtime(__DIR__."/ctl_caves.php") > filemtime("misc/fndatabase/ctl_caves.php") )
+    global $_FN;
+    $datadir = empty($_FN['datadir']) ? "misc" : $_FN['datadir'];
+    $database = empty($_FN['database']) ? "fndatabase" : $_FN['database'];
+    $src = __DIR__ . "/ctl_caves.php";
+    $dest = "$datadir/$database/ctl_caves.php";
+    $sentinel = "$datadir/openkis_lombardia_ctl_caves.installed";
+    $signature = @filesize($src) . "-" . @filemtime($src);
+    if (file_exists($sentinel) && trim(@file_get_contents($sentinel)) === $signature)
     {
-        file_put_contents("misc/fndatabase/ctl_caves.php", file_get_contents(__DIR__."/ctl_caves.php"));
-        die("misc/fndatabase/ctl_caves.php updated");
+        return;
     }
-    else
+    if (!is_dir("$datadir/$database") || !is_writable("$datadir/$database"))
     {
-
-        //    dprint_r(filemtime("misc/fndatabase/ctl_caves.php") );
-        //    dprint_r(filemtime(__DIR__."/ctl_caves.php") );
+        return;
     }
-
-    //LONTRA
-    if (!file_exists("misc/fndatabase/ctl_surveys.php") || filemtime(__DIR__."/ctl_surveys.php") > filemtime("misc/fndatabase/ctl_surveys.php") )
+    $content = @file_get_contents($src);
+    if ($content === false || $content === "")
     {
-        file_put_contents("misc/fndatabase/ctl_surveys.php", file_get_contents(__DIR__."/ctl_surveys.php"));
-        die("misc/fndatabase/ctl_surveys.php updated");
+        return;
     }
-    else
+    if (!file_exists($dest) || md5_file($dest) !== md5($content))
     {
-
-        //    dprint_r(filemtime("misc/fndatabase/ctl_surveys.php") );
-        //    dprint_r(filemtime(__DIR__."/ctl_surveys.php") );
+        if (@file_put_contents($dest, $content) === false)
+        {
+            return;
+        }
     }
-
-
+    @file_put_contents($sentinel, $signature);
 }
 
 
@@ -167,7 +176,6 @@ function cglombardia_checkprovincia($prov)
 {
     global $_FN;
     //echo "<script>console.log('".$_FN."');</script>";
-    syslog(LOG_WARNING, "User #14 is logged from two different places.");
     if (FN_IsAdmin())
     {
         return true;
