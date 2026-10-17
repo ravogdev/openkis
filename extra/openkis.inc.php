@@ -15,6 +15,37 @@ require_once(__DIR__ . "/openkis/install/openkis_install.php");
 // customisation (extra/openkis/custom/<region>) sets them; queued because
 // FN_LoadConfig is not available yet at this point of the bootstrap
 FN_IncludeScript("extra/openkis/openkis_defaults.php");
+
+/**
+ * Map position for a regional customisation: the region's own centre, unless
+ * the administrator changed the map defaults (admin section "configopenkis",
+ * extra/openkis/config.php). Called from extra/openkis/custom/<region>/<region>.php.
+ */
+function openkis_SetRegionMapCenter($latitude, $longitude, $zoom)
+{
+    global $_FN;
+    $config = array();
+    include __DIR__ . "/openkis/config.php"; // shipped defaults
+    $current = FN_LoadConfig("extra/openkis/config.php");
+    $changed = false;
+    foreach (array("default_latitude", "default_longitude", "default_zoom") as $k)
+    {
+        if ((string) $current[$k] !== (string) $config[$k])
+            $changed = true;
+    }
+    if ($changed)
+    {
+        $_FN['default_latitude'] = $current['default_latitude'];
+        $_FN['default_longitude'] = $current['default_longitude'];
+        $_FN['default_zoom'] = $current['default_zoom'];
+    }
+    else
+    {
+        $_FN['default_latitude'] = $latitude;
+        $_FN['default_longitude'] = $longitude;
+        $_FN['default_zoom'] = $zoom;
+    }
+}
 $files = glob(__DIR__ . "/openkis/fields/*.class.php");
 
 if (is_array($files))
@@ -33,6 +64,7 @@ if (is_array($files))
 function openkis_UpdateCoords($mod, $forceall = false)
 {
     global $_FN;
+    $started = time();
     //dprint_r(" openkis_UpdateCoords($mod, $forceall = false)");
     $config = FN_LoadConfig("modules/dbview/config.php", $mod);
     $file_lastUpdate = "{$_FN['datadir']}/_cache/openkis_UpdateCoords{$mod}.time";
@@ -72,6 +104,223 @@ function openkis_UpdateCoords($mod, $forceall = false)
         }
     }
     @touch($file_lastUpdate);
+    if ($forceall)
+    {
+        // a full recalculation started at $started (openkis_UpdateCoordsIfChanged)
+        @touch(openkis_UpdateCoordsAllFile($mod), $started);
+    }
+}
+
+/**
+ * @param string $mod
+ * @return string the file whose mtime is the start of the last full
+ * recalculation of $mod's coordinates
+ */
+function openkis_UpdateCoordsAllFile($mod)
+{
+    global $_FN;
+    return "{$_FN['datadir']}/_cache/openkis_UpdateCoordsAll{$mod}.time";
+}
+
+/**
+ * Full coordinate recalculation, like openkis_UpdateCoords($mod, true), but
+ * only when something it depends on changed since the last full one: the
+ * section's table, ctl_coordinatestypes or the conversion code. Edits made
+ * directly in the database are not seen: use Control center -> Utilities ->
+ * Refresh map data, or "php refresh-cache.php".
+ *
+ * @param string $mod
+ */
+function openkis_UpdateCoordsIfChanged($mod)
+{
+    $config = FN_LoadConfig("modules/dbview/config.php", $mod);
+    $file = openkis_UpdateCoordsAllFile($mod);
+    if (file_exists($file))
+    {
+        $changed = max(openkis_MapCacheStamp($config['tables']),
+            openkis_MapCacheStamp("ctl_coordinatestypes"),
+            filectime(__FILE__),
+            filectime(__DIR__ . "/openkis_geoconverter/openkis_geoconverter.class.php"));
+        clearstatcache(true, $file);
+        // recalculate when a stamp is >= the start of the last one: stamps
+        // have a one second resolution, and a change made during the last
+        // recalculation (or by it) is not older than its start
+        if ($changed < filemtime($file))
+        {
+            if (isset($_GET['debug']))
+                dprint_r("$mod:Cache openkis_UpdateCoordsIfChanged: $changed", "", "magenta");
+            return;
+        }
+    }
+    openkis_UpdateCoords($mod, true);
+}
+
+/**
+ * Map exports cache (openkis_kml.php, openkis_gpx.php, openkis_json.php,
+ * openkis_markers.js.php).
+ *
+ * The cache is looked up before the query and is valid until the table
+ * changes (XMETATable touches misc/fndatabase/<table>/updated on every insert,
+ * update and delete), the endpoint file changes, or it is older than
+ * $_FN['openkis_map_cache_maxage'] seconds (default 3600, 0 = no cache).
+ * Edits made directly in the database are not seen: use Control center ->
+ * Utilities -> Refresh map data, or "php refresh-cache.php".
+ *
+ * @param string $endpoint __FILE__ of the endpoint
+ * @param array $config the section configuration
+ * @return string
+ */
+function openkis_MapCacheKey($endpoint, $config)
+{
+    global $_FN;
+    $request = array_merge($_GET, $_POST);
+    unset($request['debug'], $request['nocache']);
+    ksort($request);
+    $context = array($request, $config, $_FN['mod'], $_FN['lang'], $_FN['siteurl'], $_FN['user']);
+    return "openkis_map_" . basename($endpoint) . "_" . filemtime($endpoint) . "_" . md5(serialize($context));
+}
+
+/**
+ * Last change time of a table. The marker folder is created when missing
+ * (MySQL tables), otherwise XMETATable cannot record the changes and the
+ * time would never move.
+ *
+ * @param string $tablename
+ * @return int
+ */
+function openkis_MapCacheStamp($tablename)
+{
+    $table = FN_XMDBTable($tablename);
+    if (!$table)
+    {
+        return time();
+    }
+    $dir = "{$table->path}/{$table->databasename}/{$table->tablename}";
+    if (!file_exists("$dir/updated"))
+    {
+        if (!is_dir($dir))
+        {
+            @mkdir($dir, 0755, true);
+        }
+        @touch("$dir/updated");
+    }
+    clearstatcache(true, "$dir/updated");
+    return $table->GetLastUpdateTime();
+}
+
+/**
+ * @param string $key from openkis_MapCacheKey()
+ * @param string $tablename
+ * @return string|null the cached output, null when missing or out of date
+ */
+function openkis_MapCacheGet($key, $tablename)
+{
+    global $_FN;
+    $maxage = isset($_FN['openkis_map_cache_maxage']) ? intval($_FN['openkis_map_cache_maxage']) : 3600;
+    if ($maxage <= 0)
+    {
+        return null;
+    }
+    $cache = FN_GetGlobalVarValue($key);
+    if (!is_array($cache) || !isset($cache['stamp'], $cache['time'], $cache['data']))
+    {
+        return null;
+    }
+    if ($cache['stamp'] < openkis_MapCacheStamp($tablename) || time() - $cache['time'] > $maxage)
+    {
+        return null;
+    }
+    return $cache['data'];
+}
+
+/**
+ * @param string $key from openkis_MapCacheKey()
+ * @param int $stamp openkis_MapCacheStamp() read before the query
+ * @param string $data
+ */
+function openkis_MapCacheSet($key, $stamp, $data)
+{
+    global $_FN;
+    // with APCu, entries past maxage are dropped from memory instead of
+    // waiting for the store to fill up (the file cache ignores the ttl)
+    $maxage = isset($_FN['openkis_map_cache_maxage']) ? intval($_FN['openkis_map_cache_maxage']) : 3600;
+    FN_SetGlobalVarValue($key, array('stamp' => $stamp, 'time' => time(), 'data' => $data), max(0, $maxage));
+}
+
+/**
+ * Drops every cached map export, recalculates the coordinates and re-syncs
+ * the record id counters, e.g. after the data were changed directly in the
+ * database.
+ *
+ * @return array what was done, one line per step
+ */
+function openkis_RefreshMapData()
+{
+    global $_FN;
+    $done = array();
+    foreach (array("caves", "artificials", "springs", "glacial") as $mod)
+    {
+        if (!file_exists("sections/$mod"))
+        {
+            continue;
+        }
+        $config = FN_LoadConfig("modules/dbview/config.php", $mod);
+        if (empty($config['tables']) || !FN_XMDBTable($config['tables']))
+        {
+            continue;
+        }
+        openkis_MapCacheStamp($config['tables']);
+        FN_XMDBTable($config['tables'])->SetLastUpdateTime();
+        $done[] = "{$config['tables']}: " . FN_Translate("marked as changed");
+    }
+    FN_ClearCache();
+    if (function_exists('apcu_clear_cache'))
+    {
+        apcu_clear_cache();
+    }
+    $done[] = FN_Translate("cache cleared");
+    // the map endpoints recalculate these three
+    foreach (array("caves", "artificials", "springs") as $mod)
+    {
+        if (file_exists("sections/$mod"))
+        {
+            openkis_UpdateCoords($mod, true);
+            $done[] = "$mod: " . FN_Translate("coordinates recalculated");
+        }
+    }
+    $done = array_merge($done, openkis_SyncRecordIds());
+    return $done;
+}
+
+/**
+ * Moves the counters that give the ids of new records past the highest id in
+ * each MySQL table, e.g. after records were inserted directly in the
+ * database. Without it finis notices a taken id on the next insert and
+ * re-syncs that counter by itself.
+ *
+ * @return array what was done, one line per counter
+ */
+function openkis_SyncRecordIds()
+{
+    global $_FN;
+    $done = array();
+    foreach (glob("{$_FN['datadir']}/{$_FN['database']}/*.php") as $file)
+    {
+        $table = FN_XMDBTable(basename($file, ".php"));
+        if (!$table || !method_exists($table, "SyncAutoincrement"))
+        {
+            continue;
+        }
+        foreach ($table->SyncAutoincrement() as $field => $next)
+        {
+            $done[] = "{$table->tablename}: " . FN_Translate("next record id") . " $next";
+        }
+    }
+    if (empty($done))
+    {
+        $done[] = FN_Translate("record id counters: nothing to re-sync");
+    }
+    return $done;
 }
 
 /**
@@ -115,17 +364,15 @@ function openkis_GetItemPosition($row)
             $coordinatestypes = "GEOWGS84";
         else
             $coordinatestypes = "UTMWGS8432";
-        if ($lat_ori == "" && $lon_ori == "")
-        {
-            
-        }
-        else
-        {
-            dprint_r("$lat_ori,$lon_ori, coordinatestypes vuoto per {$row['code']} - force $coordinatestypes ", "", "red");
-        }
+        // the type is guessed: log it for the admins (container logs), and
+        // print it in the page only for an admin asking for ?debug
+        $msg = "$lat_ori,$lon_ori, coordinatestypes vuoto per {$row['code']} - force $coordinatestypes";
+        error_log("openkis: $msg");
+        if (isset($_GET['debug']) && FN_IsAdmin())
+            dprint_r($msg, "", "red");
     }
 
-    $items_ct = $table_coordinatestypes->GetRecord(array("coordinates_type" => $coordinatestypes));
+    $items_ct = XMETAFKLookup::GetRecord($table_coordinatestypes, "coordinates_type", $coordinatestypes, "proj4");
 
     $proj = (!empty($items_ct['proj4'])) ? $items_ct['proj4'] : "";
     //dprint_r($items_ct);

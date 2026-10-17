@@ -1,0 +1,145 @@
+# Moves issues to "In progress" on the OpenKIS project board when work starts:
+# - a pull request is opened (draft included), reopened, marked ready or edited
+#   and links an issue ("Fixes #N", "Closes #N", "Resolves #N", "Refs #N" or
+#   "Part of #N" in its description, or the Development sidebar);
+# - an issue is assigned to someone.
+# Closed issues are left alone; the board's built-in workflows move closed
+# issues and merged pull requests to Done.
+#
+# Setup (once):
+# 1. Create a classic personal access token with the `project` and
+#    `public_repo` scopes and save it as the repository secret PROJECT_TOKEN.
+# 2. Set the repository variable PROJECT_NUMBER to the board's number (the
+#    last part of its URL: github.com/users/<owner>/projects/<number>).
+# Optional variables: PROJECT_OWNER (default: the repository owner) and
+# PROJECT_IN_PROGRESS (default: "In progress", the Status option to set).
+# The job is skipped until PROJECT_NUMBER is set.
+#
+# GitHub runs issue events with the workflow on the default branch, so the
+# "assigned" trigger only fires once this file is on that branch.
+
+name: Board - move to In progress
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, edited]
+  issues:
+    types: [assigned]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-in-progress-${{ github.event.pull_request.number || github.event.issue.number }}
+
+jobs:
+  in-progress:
+    if: vars.PROJECT_NUMBER != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set linked issues to In progress
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          ISSUE_ID: ${{ github.event.issue.node_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          OWNER: ${{ vars.PROJECT_OWNER || github.repository_owner }}
+          PROJECT_NUMBER: ${{ vars.PROJECT_NUMBER }}
+          STATUS_NAME: ${{ vars.PROJECT_IN_PROGRESS || 'In progress' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The PROJECT_TOKEN secret is not set (see the setup notes in this workflow)."
+            exit 1
+          fi
+
+          # Open issues this event is about
+          if [ "$EVENT" = issues ]; then
+            # shellcheck disable=SC2016 # GraphQL $variables stay literal
+            issues=$(gh api graphql \
+              -f query='query($id: ID!) { node(id: $id) { ... on Issue { id state } } }' \
+              -f id="$ISSUE_ID" \
+              | jq -r '.data.node | select(.state == "OPEN") | .id')
+          else
+            # GitHub only fills closingIssuesReferences for pull requests into
+            # the default branch, so also read the keywords from the body
+            # shellcheck disable=SC2016 # GraphQL $variables stay literal
+            pr=$(gh api graphql \
+              -f query='query($owner: String!, $name: String!, $number: Int!) {
+                repository(owner: $owner, name: $name) {
+                  pullRequest(number: $number) {
+                    body
+                    closingIssuesReferences(first: 25) { nodes { number } }
+                  }
+                }
+              }' \
+              -f owner="${REPO%/*}" -f name="${REPO#*/}" -F number="$PR_NUMBER")
+            numbers=$( {
+              jq -r '.data.repository.pullRequest.closingIssuesReferences.nodes[].number' <<<"$pr"
+              # Closing keywords, plus "Refs #N" / "Part of #N" for work that
+              # touches an issue without closing it
+              jq -r '.data.repository.pullRequest.body // ""' <<<"$pr" \
+                | grep -ioE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?|refs?|references|part of):?[[:space:]]+#[0-9]+' \
+                | grep -oE '[0-9]+$' || true
+            } | sort -un | tr "\n" " ")
+            echo "::notice::Linked issues: ${numbers:-none}"
+            issues=""
+            for number in $numbers; do
+              # shellcheck disable=SC2016 # GraphQL $variables stay literal
+              id=$(gh api graphql \
+                -f query='query($owner: String!, $name: String!, $number: Int!) {
+                  repository(owner: $owner, name: $name) { issue(number: $number) { id state } }
+                }' \
+                -f owner="${REPO%/*}" -f name="${REPO#*/}" -F number="$number" \
+                | jq -r '.data.repository.issue | select(. != null and .state == "OPEN") | .id' || true)
+              if [ -n "$id" ]; then issues="${issues:+$issues }$id"; fi
+            done
+          fi
+          if [ -z "$issues" ]; then
+            echo "::notice::No open linked issues, nothing to do."
+            exit 0
+          fi
+
+          # Board, its Status field and the "In progress" option
+          # shellcheck disable=SC2016 # GraphQL $variables stay literal
+          board=$(gh api graphql \
+            -f query='query($login: String!, $number: Int!) {
+              user(login: $login) {
+                projectV2(number: $number) {
+                  id
+                  field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
+                }
+              }
+            }' \
+            -f login="$OWNER" -F number="$PROJECT_NUMBER")
+          project_id=$(jq -r '.data.user.projectV2.id // empty' <<<"$board")
+          field_id=$(jq -r '.data.user.projectV2.field.id // empty' <<<"$board")
+          option_id=$(jq -r --arg name "$STATUS_NAME" \
+            '.data.user.projectV2.field.options[]? | select((.name | ascii_downcase) == ($name | ascii_downcase)) | .id' <<<"$board")
+          if [ -z "$project_id" ] || [ -z "$field_id" ] || [ -z "$option_id" ]; then
+            echo "::error::Board $OWNER/$PROJECT_NUMBER, its Status field or the \"$STATUS_NAME\" option was not found."
+            exit 1
+          fi
+
+          for issue in $issues; do
+            # Adding an issue that is already on the board returns its item
+            # shellcheck disable=SC2016 # GraphQL $variables stay literal
+            item_id=$(gh api graphql \
+              -f query='mutation($project: ID!, $content: ID!) {
+                addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id } }
+              }' \
+              -f project="$project_id" -f content="$issue" \
+              | jq -r '.data.addProjectV2ItemById.item.id')
+            # shellcheck disable=SC2016 # GraphQL $variables stay literal
+            gh api graphql \
+              -f query='mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $project, itemId: $item, fieldId: $field,
+                  value: { singleSelectOptionId: $option }
+                }) { projectV2Item { id } }
+              }' \
+              -f project="$project_id" -f item="$item_id" -f field="$field_id" -f option="$option_id" \
+              > /dev/null
+            echo "::notice::Moved issue $issue to $STATUS_NAME."
+          done

@@ -1,0 +1,84 @@
+# Keeps the docker-deploy branch in step with develop. On every push to
+# develop the web image is built from that commit and smoke-tested
+# (deploy/smoke-test.sh: fresh install, pages, caves map, Refresh map data);
+# only if that passes is docker-deploy fast-forwarded to the same commit
+# (finis submodule pointer included). A failing build or test leaves
+# docker-deploy on the last commit that passed. No image is pushed.
+#
+# Only fast-forwards. If docker-deploy has commits that develop lacks, the job
+# fails with an annotation and leaves the branch alone: merge those commits
+# into develop first, then re-run it (Actions -> Sync docker-deploy -> Run).
+#
+# Token: by default it pushes with the workflow's own GITHUB_TOKEN. GitHub
+# refuses that token for pushes that bring in changes under .github/workflows/
+# (this file included, on the first sync), so the job then fails. To cover
+# those pushes, save a token with the `repo` and `workflow` scopes as the
+# repository secret SYNC_TOKEN; it is used instead when set.
+
+name: Sync docker-deploy
+
+on:
+  push:
+    branches: [develop]
+  # pull requests into develop: smoke test only, so a PR shows whether its
+  # image works before it is merged; docker-deploy is not moved
+  pull_request:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-docker-deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build the image and smoke-test it
+        run: deploy/smoke-test.sh
+
+  sync:
+    needs: smoke-test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Fast-forward docker-deploy to the tested commit
+        run: |
+          set -eu
+          target=$(git rev-parse HEAD)
+          if ! git ls-remote --exit-code --heads origin docker-deploy >/dev/null; then
+            echo "::warning::docker-deploy does not exist, nothing to sync"
+            exit 0
+          fi
+          git fetch --no-tags origin docker-deploy
+          current=$(git rev-parse FETCH_HEAD)
+          if git merge-base --is-ancestor "$target" "$current"; then
+            echo "docker-deploy is already at or past the tested commit ($target)"
+            exit 0
+          fi
+          if ! git merge-base --is-ancestor "$current" "$target"; then
+            echo "::error::docker-deploy has commits that develop lacks; merge them into develop, then re-run this workflow"
+            git log --oneline "$target..$current"
+            exit 1
+          fi
+          # no --force: GitHub rejects the push if it is not a fast-forward
+          if ! git push origin "$target:refs/heads/docker-deploy"; then
+            echo "::error::push to docker-deploy refused; if the new commits change .github/workflows/, set the SYNC_TOKEN secret (see the top of this file) and re-run"
+            exit 1
+          fi
+          echo "::notice::docker-deploy fast-forwarded ${current:0:7} -> ${target:0:7} ($(git rev-list --count "$current..$target") commits)"
