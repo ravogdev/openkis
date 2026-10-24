@@ -20,6 +20,8 @@ say() { echo "[openkis] $*"; }
 : "${OPENKIS_MCP_APIKEY:=}"
 : "${OPENKIS_MCP_USER:=admin}"
 : "${OPENKIS_MCP_READONLY:=0}"
+: "${OPENKIS_APIKEY_GROUPS:=}"
+: "${OPENKIS_MCP_WRITE_GROUP:=}"
 : "${OPENKIS_DB_WAIT:=60}"
 : "${OPENKIS_DB_INDEXES:=1}"
 : "${OPENKIS_DB_INDEXES_INTERVAL:=3600}"
@@ -66,6 +68,14 @@ if [ ! -f "$CONF" ] || grep -q "$MARKER" "$CONF"; then
             echo "\$_FN['openkis_mcp_apikey'] = $(phpq "$OPENKIS_MCP_APIKEY");"
             echo "\$_FN['openkis_mcp_user'] = $(phpq "$OPENKIS_MCP_USER");"
             echo "\$_FN['openkis_mcp_readonly'] = $(( OPENKIS_MCP_READONLY ? 1 : 0 ));"
+        fi
+        # personal API keys: empty keeps the defaults of extra/openkis_config.inc.php
+        # (mcp_users may use a key, mcp_write may use the write tools; admins always can)
+        if [ -n "$OPENKIS_APIKEY_GROUPS" ]; then
+            echo "\$_FN['apikey_groups'] = $(phpq "$OPENKIS_APIKEY_GROUPS");"
+        fi
+        if [ -n "$OPENKIS_MCP_WRITE_GROUP" ]; then
+            echo "\$_FN['openkis_mcp_write_group'] = $(phpq "$OPENKIS_MCP_WRITE_GROUP");"
         fi
         echo "if (!empty(\$_FN['openkis_custom']))"
         echo "{"
