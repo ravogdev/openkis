@@ -25,7 +25,7 @@ RUN set -eux; \
         php8.3-curl php8.3-zip php8.3-apcu \
         mariadb-client rsync patch ca-certificates tzdata curl; \
     rm -rf /var/lib/apt/lists/*; \
-    a2enmod rewrite headers expires php8.3; \
+    a2enmod rewrite headers expires remoteip php8.3; \
     a2dissite 000-default; \
     ln -sf /dev/stdout /var/log/apache2/access.log; \
     ln -sf /dev/stderr /var/log/apache2/error.log; \

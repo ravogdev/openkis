@@ -126,6 +126,7 @@ them.
 | `OPENKIS_MCP_APIKEY`, `OPENKIS_MCP_USER`, `OPENKIS_MCP_READONLY` | legacy global MCP key (`openkis_mcp.php`), full access as `OPENKIS_MCP_USER`; off while empty |
 | `OPENKIS_APIKEY_GROUPS`, `OPENKIS_MCP_WRITE_GROUP` | personal API keys: groups that may use a key and groups allowed to use the MCP write tools (comma separated; admins always can). Empty = `mcp_users` and `mcp_write` |
 | `THUNDERFOREST_API_KEY`, `MAPTILER_API_KEY`, `ALGOLIA_DOCSEARCH_API_KEY` | optional map/search keys |
+| `OPENKIS_TRUSTED_PROXIES` | reverse proxies whose `X-Forwarded-For` header gives the visitor's address: addresses or CIDR ranges, comma separated. `docker` (default) = the other containers on the web container's networks, such as the bundled Caddy; `none` = off. A proxy on the host or on another machine is added by address. Needed for the login lockout and the access log behind a proxy |
 | `OPENKIS_DISPLAY_ERRORS` | `off` (default). `on` shows PHP errors in pages; development only, warnings corrupt the KML/JSON/GPX exports |
 | `TZ` | time zone for PHP and MariaDB |
 | `OPENKIS_DB_INDEXES`, `OPENKIS_DB_INDEXES_INTERVAL` | `1` (default) applies `sql/openkis_indexes.sql` at start and every `3600` s; `0` = off / only at start (see `INDEXES.md`) |
@@ -308,6 +309,16 @@ restarts; trust it only on your own machines.
 - Serve it over HTTPS: use the `https` profile above, or another TLS reverse
   proxy in front of port 80; Apache honours `X-Forwarded-Proto: https`. Set the site URL in the control center if
   links come out as `http://`.
+- Behind a reverse proxy, Apache takes the visitor's address from
+  `X-Forwarded-For` only for connections from `OPENKIS_TRUSTED_PROXIES`. The
+  default `docker` covers the bundled Caddy and other containers on the same
+  Docker network, but not the Docker gateway: when Docker forwards the
+  published port through its userland proxy, every outside visitor comes from
+  the gateway. A proxy on the host (it reaches the container from the gateway,
+  see `docker network inspect openkis_default`) or on another machine must be
+  added by address, for example `OPENKIS_TRUSTED_PROXIES=docker,172.18.0.1`;
+  otherwise every visitor shares the proxy's address and five wrong passwords
+  from anyone lock that username for everyone.
 - Change both database passwords; MariaDB is not published on the host.
 - Apache denies `openkis_config.local.php`, `config.vars.local.php`,
   the `.php` files in `misc/fndatabase/` (PHP is also switched off there, so an
