@@ -18,6 +18,7 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 
 - **L'accesso alle sezioni** (chi vede o modifica una sezione) dipende dalle impostazioni delle sezioni salvate nel database (`fn_sections`). Aggiornare il codice non lo cambia.
 - **Visibilità dei record.** Un record riservato a un gruppo (per esempio le grotte nascoste) è visibile solo ai membri di quel gruppo e agli amministratori. Rinominare o eliminare un gruppo nasconde quei record ai suoi ex membri, senza alcun avviso.
+- **Mappa pubblica e grotte riservate.** Quando una sezione è riservata (per esempio "Catasto Grotte Riservato"), chi non può aprirla vede comunque la mappa pubblica e le sue esportazioni (KML, GPX, JSON, marker, shapefile, WISH, `openkis_API.php`), ma solo con le grotte che hanno **Visibile sulla mappa pubblica** = Si. Il campo parte da No su tutte le grotte, quindi dopo l'aggiornamento la mappa pubblica è vuota finché i curatori non lo impostano. Le restrizioni per gruppo (`groupview`) valgono comunque. L'esportazione della cronologia delle modifiche e la sovrapposizione dei rilievi vengono rifiutate del tutto a chi non ha accesso. Una tabella senza il campo `public_map` (per esempio le sorgenti) resta del tutto chiusa per loro.
 - **Gli amministratori** (livello 10) superano i controlli sui gruppi, compreso quello sulle chiavi API qui sotto.
 
 ## Server MCP e chiavi API

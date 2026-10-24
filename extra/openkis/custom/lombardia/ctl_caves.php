@@ -605,6 +605,20 @@
         <view_endgroup>data</view_endgroup>
     </field>
     <field>
+        <name>public_map</name>
+        <frm_i18n>shown on the public map</frm_i18n>
+        <frm_it>Visibile sulla mappa pubblica</frm_it>
+        <frm_en>Shown on the public map</frm_en>
+        <type>radio</type>
+        <frm_options>Y,N</frm_options>
+        <frm_options_it>Si,No</frm_options_it>
+        <frm_options_en>Yes,No</frm_options_en>
+        <defaultvalue>N</defaultvalue>
+        <frm_default>N</frm_default>
+        <frm_help_it>Se Si, la posizione della grotta compare sulla mappa pubblica e nei suoi export anche per chi non ha accesso al catasto riservato.</frm_help_it>
+        <frm_help_en>If Yes, the cave's position appears on the public map and its exports, also for users without access to the reserved register.</frm_help_en>
+    </field>
+    <field>
         <name>groupview</name>
         <frm_i18n>limits the display of the content in these groups</frm_i18n>
         <foreignkey>fn_groups</foreignkey>
