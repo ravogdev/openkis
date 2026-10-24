@@ -28,6 +28,7 @@ say() { echo "[openkis] $*"; }
 : "${OPENKIS_DISPLAY_ERRORS:=off}"
 : "${OPENKIS_HOME_SECTION:=}"
 : "${OPENKIS_ENABLE_PROXY:=0}"
+: "${OPENKIS_TRUSTED_PROXIES:=docker}"
 
 # php single-quoted string literal
 phpq() { printf "'%s'" "$(printf '%s' "$1" | sed -e "s/\\\\/\\\\\\\\/g" -e "s/'/\\\\'/g")"; }
@@ -116,6 +117,65 @@ if [ "$OPENKIS_ENABLE_PROXY" = 1 ]; then
 else
     printf '<LocationMatch "^/+openkis_proxy\\.php">\n    Require all denied\n</LocationMatch>\n' \
         > /etc/apache2/conf-enabled/openkis-proxy.conf
+fi
+
+# Client address behind a reverse proxy (Caddy, nginx, a load balancer). The
+# proxy is the one connecting to Apache, so without this every visitor has the
+# proxy's address, and the login lockout (per username and address) blocks a
+# username for everyone. mod_remoteip takes the client from X-Forwarded-For,
+# but only when the connection comes from a trusted proxy: the header of any
+# other client is ignored, since anyone can send it.
+# OPENKIS_TRUSTED_PROXIES: addresses or CIDR ranges, comma or space separated.
+# "docker" = the other containers on the networks of this container (the
+# bundled Caddy); "none" = off.
+
+# The networks of this container, from the kernel routing table, without
+# their gateway: when Docker forwards a published port through its userland
+# proxy, every outside visitor arrives from the gateway, and trusting it would
+# let anyone choose their address. A proxy on the host is added by address.
+docker_subnets() {
+    local iface dest gw flags ref use metric mask rest m bits net g l
+    local -A gateway=()
+    while read -r iface dest gw rest; do
+        [ "$dest" = 00000000 ] && [ "$gw" != 00000000 ] && gateway[$iface]=$gw
+    done < /proc/net/route
+    ip4() { printf '%d.%d.%d.%d' $(($1 >> 24 & 255)) $(($1 >> 16 & 255)) $(($1 >> 8 & 255)) $(($1 & 255)); }
+    le() { echo $((0x${1:6:2} << 24 | 0x${1:4:2} << 16 | 0x${1:2:2} << 8 | 0x${1:0:2})); }
+    while read -r iface dest gw flags ref use metric mask rest; do
+        [ "$iface" = Iface ] || [ "$iface" = lo ] && continue
+        [ "$dest" = 00000000 ] || [ "$gw" != 00000000 ] && continue
+        m=$(le "$mask"); bits=0
+        while [ "$m" -gt 0 ]; do bits=$((bits + (m & 1))); m=$((m >> 1)); done
+        net=$(le "$dest")
+        g=${gateway[$iface]:-}
+        if [ -z "$g" ] || [ "$bits" -ge 32 ]; then
+            echo "$(ip4 "$net")/$bits"
+            continue
+        fi
+        g=$(le "$g")
+        # the subnet minus the gateway: the sibling block at each length
+        for ((l = bits + 1; l <= 32; l++)); do
+            m=$(( (0xFFFFFFFF << (32 - l)) & 0xFFFFFFFF ))
+            echo "$(ip4 $(( (g ^ (1 << (32 - l))) & m )))/$l"
+        done
+    done < /proc/net/route
+}
+REMOTEIP_CONF=/etc/apache2/conf-enabled/openkis-remoteip.conf
+proxies=""
+for p in $(printf '%s' "$OPENKIS_TRUSTED_PROXIES" | tr ',' ' '); do
+    case "$p" in
+        none) proxies=""; break ;;
+        docker) proxies="$proxies $(docker_subnets | tr '\n' ' ')" ;;
+        *[!0-9A-Fa-f:./]*) say "WARNING: OPENKIS_TRUSTED_PROXIES: '$p' is not an address or CIDR range, ignored" ;;
+        *) proxies="$proxies $p" ;;
+    esac
+done
+proxies=$(echo $proxies)
+if [ -n "$proxies" ]; then
+    printf 'RemoteIPHeader X-Forwarded-For\nRemoteIPInternalProxy %s\n' "$proxies" > "$REMOTEIP_CONF"
+    say "client address taken from X-Forwarded-For when the request comes from: $proxies"
+else
+    rm -f "$REMOTEIP_CONF"
 fi
 
 # --- 3. map api keys -----------------------------------------------------------
