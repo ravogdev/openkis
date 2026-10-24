@@ -21,10 +21,10 @@ switch($op)
         $dbview=new FNDBVIEW($config);
         $table=FN_XMDBTable($config['tables']);
         $params=$_REQUEST;
-        if (empty($params['fields']))
-        {
-            $params['fields']="code,latitude,longitude,elevation";
-        }
+        // the exported columns are fixed: a "fields" parameter from the
+        // request is ignored, so unauthenticated calls cannot pick other
+        // columns of the table
+        $params['fields']="code,latitude,longitude,elevation";
         $results=$dbview->GetResults($config,$params);
         break;
 }
