@@ -38,3 +38,7 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 ## Modifiche allo schema del database
 
 - **Le colonne mancanti vengono aggiunte automaticamente.** Quando la definizione di una tabella riceve un nuovo campo, OpenKIS aggiunge la colonna alla prima pagina che apre quella tabella. Sulle tabelle grandi quella pagina sarà lenta una volta. Per gli import grandi, esegui prima l'SQL di migrazione, prima che il container web parta.
+
+## Solo Liguria
+
+- **Analisi AI dei rilievi.** Nei moduli di modifica delle grotte e delle cavità artificiali un riquadro analizza il disegno del rilievo con OpenAI. Funziona solo se `$_FN['openai_apikey']` è impostato in `openkis_config.local.php`; senza, il riquadro segnala che la chiave manca. L'immagine del rilievo viene inviata a OpenAI, e qualsiasi utente collegato può avviare un'analisi, quindi ognuna ha un costo sulla chiave. L'ultima analisi resta in `misc/_cache/openkis_ai_survey/` e viene mostrata di nuovo finché l'immagine non cambia.

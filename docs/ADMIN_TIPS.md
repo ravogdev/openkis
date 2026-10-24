@@ -38,3 +38,7 @@ Things the application does on its own, limits that can surprise you, and the ri
 ## Database schema changes
 
 - **Missing columns are added automatically.** When a table definition gains a field, OpenKIS adds the column on the first page that opens that table. On large tables, that page is slow once. For big imports, run the migration SQL first, before the web container starts.
+
+## Liguria only
+
+- **AI survey analysis.** In the cave and artificial cavity edit forms, a box analyses the survey drawing with OpenAI. It works only when `$_FN['openai_apikey']` is set in `openkis_config.local.php`; without it the box reports that the key is missing. The survey image is sent to OpenAI, and any logged-in user can start an analysis, so each one costs money on the key. The last analysis is kept in `misc/_cache/openkis_ai_survey/` and shown again while the image is unchanged.
