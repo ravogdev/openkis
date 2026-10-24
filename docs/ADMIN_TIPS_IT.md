@@ -19,6 +19,7 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 - **L'accesso alle sezioni** (chi vede o modifica una sezione) dipende dalle impostazioni delle sezioni salvate nel database (`fn_sections`). Aggiornare il codice non lo cambia.
 - **Visibilità dei record.** Un record riservato a un gruppo (per esempio le grotte nascoste) è visibile solo ai membri di quel gruppo e agli amministratori. Rinominare o eliminare un gruppo nasconde quei record ai suoi ex membri, senza alcun avviso.
 - **Mappa pubblica.** Chi non può aprire una sezione riservata vede sulla mappa pubblica solo le grotte con **Visibile sulla mappa pubblica** = Si. Le grotte nuove ed esistenti partono da No, quindi sono i curatori a decidere quali grotte sono pubbliche. Le restrizioni per gruppo (`groupview`) valgono comunque.
+- **I nomi dei gruppi sono in inglese.** Le grotte nascoste si riservano al gruppo `hidden_caves`, quelle archeologiche ad `archaeologists`; chi scrive nel catasto è in `w_caves`, nella fauna in `w_fauna`. I vecchi nomi italiani (`grotte_nascoste`, `archeologi`) vengono rinominati dalla migrazione della Lombardia; un gruppo creato a mano con un vecchio nome non viene più proposto quando si riserva una grotta.
 - **Gli amministratori** (livello 10) superano i controlli sui gruppi, compreso quello sulle chiavi API qui sotto.
 
 ## Server MCP e chiavi API

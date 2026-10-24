@@ -602,6 +602,8 @@
         <name>import_rawdata</name>
         <frm_it>Dati pre importazione</frm_it>
         <type>text</type>
+        <frm_show>0</frm_show>
+        <view_show>1</view_show>
         <view_endgroup>data</view_endgroup>
     </field>
     <field>
