@@ -123,7 +123,8 @@ them.
 | `OPENKIS_DB_NAME`, `OPENKIS_DB_USER`, `OPENKIS_DB_PASSWORD`, `MARIADB_ROOT_PASSWORD` | database |
 | `OPENKIS_CUSTOM` | regional customisation: `example`, `italia`, `liguria`, `lombardia`, `marche`, `piemonte`, `umbria`, `wish`; empty = generic |
 | `OPENKIS_HOME_SECTION` | landing page, a folder in `sections/`: e.g. `map_caves` (cave map centred on the region) or `caves` instead of the WISH portal `home`; empty = the home section set in the control center |
-| `OPENKIS_MCP_APIKEY`, `OPENKIS_MCP_USER`, `OPENKIS_MCP_READONLY` | MCP API (`openkis_mcp.php`), off while the key is empty |
+| `OPENKIS_MCP_APIKEY`, `OPENKIS_MCP_USER`, `OPENKIS_MCP_READONLY` | legacy global MCP key (`openkis_mcp.php`), full access as `OPENKIS_MCP_USER`; off while empty |
+| `OPENKIS_APIKEY_GROUPS`, `OPENKIS_MCP_WRITE_GROUP` | personal API keys: groups that may use a key and groups allowed to use the MCP write tools (comma separated; admins always can). Empty = `mcp_users` and `mcp_write` |
 | `THUNDERFOREST_API_KEY`, `MAPTILER_API_KEY`, `ALGOLIA_DOCSEARCH_API_KEY` | optional map/search keys |
 | `OPENKIS_DISPLAY_ERRORS` | `off` (default). `on` shows PHP errors in pages; development only, warnings corrupt the KML/JSON/GPX exports |
 | `TZ` | time zone for PHP and MariaDB |
