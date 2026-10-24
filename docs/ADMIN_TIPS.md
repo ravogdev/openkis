@@ -18,7 +18,7 @@ Things the application does on its own, limits that can surprise you, and the ri
 
 - **Section access** (who can see or edit a section) comes from the section settings stored in the database (`fn_sections`). Updating the code doesn't change it.
 - **Record visibility.** A record restricted to a group (for example hidden caves) is visible only to members of that group and to admins. Renaming or removing a group hides those records from its former members, without any warning.
-- **Public map and reserved caves.** When a section is restricted (for example "Catasto Grotte Riservato"), users who can't open it still get the public map and its exports (KML, GPX, JSON, markers, shapefile, WISH, `openkis_API.php`), but only with the caves marked **Shown on the public map** = Yes. The flag starts as No on every cave, so after the update the public map is empty until curators set it. Group restrictions (`groupview`) still apply on top. The change history export and the surveys overlay are refused outright to users without access. A table without the `public_map` field (for example springs) stays fully closed to them.
+- **Public map.** Users who can't open a restricted section see on the public map only the caves marked **Shown on the public map** = Yes. New and existing caves start as No, so curators decide which caves are public. Group restrictions (`groupview`) still apply.
 - **Admins** (level 10) bypass group checks, including the API key check below.
 
 ## MCP server and API keys
