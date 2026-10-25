@@ -83,10 +83,10 @@
         <frm_i18n>associations</frm_i18n>
         <frm_help_it>Indicare i gruppi speleologici</frm_help_it>
         <type>string</type>
-        <frm_type>multicave</frm_type>
+        <frm_type>multiselect</frm_type>
         <foreignkey>ctl_associations</foreignkey>
-        <fk_link_field>code</fk_link_field>
-        <fk_show_field>name</fk_show_field>
+        <fk_link_field>name</fk_link_field>
+        <fk_show_field>acronym,name</fk_show_field>
     </field>
     <field>
         <name>license</name>
