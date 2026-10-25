@@ -8,6 +8,13 @@
 ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
+# Oldest acceptable libapache2-mod-php8.3 package. Ubuntu backports security
+# fixes without changing the upstream version (php -v prints 8.3.6 before and
+# after a fix), so the build checks the package version instead. 24.04.13
+# fixes PHP2Shell (CVE-2026-109618/109619). Raise it when Ubuntu ships a new
+# PHP security fix, so an image built from stale cached layers fails to build.
+ARG PHP_MIN_VERSION=8.3.6-0ubuntu0.24.04.13
+
 ENV DEBIAN_FRONTEND=noninteractive \
     APACHE_RUN_USER=www-data \
     APACHE_RUN_GROUP=www-data \
@@ -19,12 +26,16 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN set -eux; \
     apt-get update; \
+    apt-get upgrade -y; \
     apt-get install -y --no-install-recommends \
         apache2 libapache2-mod-php8.3 \
         php8.3-cli php8.3-mysql php8.3-gd php8.3-mbstring php8.3-xml \
         php8.3-curl php8.3-zip php8.3-apcu \
         mariadb-client rsync patch ca-certificates tzdata curl; \
     rm -rf /var/lib/apt/lists/*; \
+    php_version=$(dpkg-query -W -f='${Version}' libapache2-mod-php8.3); \
+    dpkg --compare-versions "$php_version" ge "$PHP_MIN_VERSION" \
+      || { echo "PHP $php_version is older than $PHP_MIN_VERSION (missing security fixes): rebuild with --pull --no-cache" >&2; exit 1; }; \
     a2enmod rewrite headers expires remoteip php8.3; \
     a2dissite 000-default; \
     ln -sf /dev/stdout /var/log/apache2/access.log; \
@@ -67,6 +78,7 @@ RUN set -eux; \
     done; \
     test -s .openkis-image-version || date -u +build-%Y%m%dT%H%M%SZ > .openkis-image-version; \
     echo "+patches-$(cat /usr/src/openkis-patches/*/*.patch 2>/dev/null | md5sum | cut -c1-8)" >> .openkis-image-version; \
+    echo "+php-$(dpkg-query -W -f='${Version}' libapache2-mod-php8.3)" >> .openkis-image-version; \
     tr -d '\n' < .openkis-image-version > .v && mv .v .openkis-image-version; \
     cat .openkis-image-version; echo; \
     find . -name '*.php' -not -path './finis/tests/*' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
