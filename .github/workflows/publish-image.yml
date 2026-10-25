@@ -9,6 +9,10 @@
 # A failing build or test pushes nothing, so :latest stays on the last image
 # that passed.
 #
+# GitHub shows the "Run workflow" button only for workflows on the default
+# branch (master), so until this file reaches master the image is published
+# by pushes to develop only.
+#
 # Setup (once), in Settings -> Secrets and variables -> Actions:
 # - secret DOCKERHUB_USERNAME: the Docker Hub account (robydoc);
 # - secret DOCKERHUB_TOKEN: a Docker Hub personal access token with

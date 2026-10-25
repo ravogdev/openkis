@@ -51,7 +51,8 @@ another tag (e.g. `robydoc/openkis-web:2026-10-25.1`).
 
 The *Publish Docker image* workflow (`.github/workflows/publish-image.yml`)
 runs on every push to `develop` and can be started by hand from the Actions
-tab (on `develop`). It builds the image from that commit, runs
+tab (on `develop`; GitHub shows the *Run workflow* button only once the
+workflow file is also on the default branch, `master`). It builds the image from that commit, runs
 `smoke-test.sh` on it and, only if that passes, pushes:
 
 | Tag | Meaning |
