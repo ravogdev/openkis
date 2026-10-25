@@ -39,6 +39,12 @@ Things the application does on its own, limits that can surprise you, and the ri
 
 - **Missing columns are added automatically.** When a table definition gains a field, OpenKIS adds the column on the first page that opens that table. On large tables, that page is slow once. For big imports, run the migration SQL first, before the web container starts.
 
+## Updates and the Docker image
+
+- **`latest` follows develop.** Every change merged into `develop` publishes a new `robydoc/openkis-web:latest` on Docker Hub, plus a dated tag such as `2026-10-25.1` (UTC date, then 1, 2, ... for each image of that day). It happens only after the automatic test passes; a failing build leaves `latest` on the previous image. So `docker compose pull` on a server can bring new code at any time.
+- **Pin a dated tag on the production server.** Set `OPENKIS_IMAGE=robydoc/openkis-web:2026-10-25.1` (for example) in `.env`, try the next one on a test copy, then change the tag and run `docker compose pull && docker compose up -d`. Going back is the same with the older tag, as long as the database has not been changed by the newer version.
+- **The image never contains database data.** Data stays in the database volume and in `misc/`; the publishing job fails if any SQL dump ends up in the image. The first start of a new image writes its tag to the web container log ("installing code version ...").
+
 ## Record validator
 
 - **The banner at the top of the edit form is a checklist, not an error.** When a cave or an artificial cavity is opened for editing, OpenKIS lists the data that is missing (name, description, entrance coordinates, elevation, survey measurements) or to complete (comune, provincia, reference system, a total depth that doesn't match positive + negative). It never blocks a save. A record with nothing to report shows a green "complete" banner.

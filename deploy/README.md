@@ -28,6 +28,7 @@ docker-compose.build.yml  optional override: build the image from this checkout
 .env.example           all settings; copy to .env
 backup.sh              dumps the database and misc/ into ./backups/
 smoke-test.sh          builds the image and tests it on a throwaway stack
+                       (also fails if the image holds an SQL dump)
 docker/entrypoint.sh   installs/upgrades code in the volume, writes the config from .env
 docker/apache-openkis.conf, docker/php.ini
 patches/               optional extra patches applied at build (empty)
@@ -44,7 +45,36 @@ docker compose up -d          # pulls robydoc/openkis-web:latest from Docker Hub
 
 `robydoc/openkis-web:latest` is built from this `deploy/Dockerfile` with this
 repository and its finis submodule. Set `OPENKIS_IMAGE` in `.env` to pin
-another tag (e.g. `robydoc/openkis-web:2026-10-15`).
+another tag (e.g. `robydoc/openkis-web:2026-10-25.1`).
+
+### Published images
+
+The *Publish Docker image* workflow (`.github/workflows/publish-image.yml`)
+runs on every push to `develop` and can be started by hand from the Actions
+tab (on `develop`). It builds the image from that commit, runs
+`smoke-test.sh` on it and, only if that passes, pushes:
+
+| Tag | Meaning |
+|---|---|
+| `latest` | the newest `develop` image that passed the smoke test |
+| `YYYY-MM-DD.N` | the same image, by UTC date; `N` counts the images of that day from 1 |
+
+The image reports its tag in `/usr/src/openkis/.openkis-image-version` and in
+the "installing code version ..." line of the entrypoint log. Because `latest`
+moves with every merge, pin a dated tag on a production server and change it
+when you upgrade.
+
+The image never contains a database dump: `.dockerignore` keeps every
+`*.sql`/`*.dump` file out of the build except `sql/openkis_indexes.sql` and
+`extra/openkis/install/demo_cave.sql`, and `smoke-test.sh` fails if the built
+image holds any other such file or any file that reads like a mysqldump,
+mariadb-dump or phpMyAdmin dump.
+
+Setup, once, in the repository's *Settings -> Secrets and variables ->
+Actions*: the secrets `DOCKERHUB_USERNAME` (the Docker Hub account) and
+`DOCKERHUB_TOKEN` (a Docker Hub personal access token with Read & Write
+access, from Docker Hub *Account settings -> Personal access tokens*).
+Optional variable `DOCKERHUB_IMAGE` (default `robydoc/openkis-web`).
 
 ### Building the image from this checkout
 
@@ -178,6 +208,7 @@ docker compose up -d
 ### Upgrading
 
 ```bash
+# with a pinned tag, set the new OPENKIS_IMAGE in .env first
 docker compose pull           # newer robydoc/openkis-web:latest
 docker compose up -d          # the log shows "installing code version ..."
 ```
@@ -352,7 +383,8 @@ setup wizard, home, Caves, caves map, control center, demo cave import,
 Refresh map data, map exports, APCu, no PHP errors. The *Sync docker-deploy*
 workflow runs it on every pull request into `develop` and every push to
 `develop`, and moves the `docker-deploy` branch to a `develop` commit only
-after it passes.
+after it passes. The *Publish Docker image* workflow runs it again on every
+push to `develop` before pushing the image to Docker Hub.
 
 Not tested: a real hostname with TLS, e-mail, photo/survey uploads through the
 UI, the other regional customisations.

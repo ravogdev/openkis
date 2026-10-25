@@ -39,6 +39,12 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 
 - **Le colonne mancanti vengono aggiunte automaticamente.** Quando la definizione di una tabella riceve un nuovo campo, OpenKIS aggiunge la colonna alla prima pagina che apre quella tabella. Sulle tabelle grandi quella pagina sarà lenta una volta. Per gli import grandi, esegui prima l'SQL di migrazione, prima che il container web parta.
 
+## Aggiornamenti e immagine Docker
+
+- **`latest` segue develop.** Ogni modifica unita in `develop` pubblica su Docker Hub una nuova `robydoc/openkis-web:latest` e un tag con la data, per esempio `2026-10-25.1` (data UTC, poi 1, 2, ... per ogni immagine di quel giorno). Succede solo se il test automatico passa; una build fallita lascia `latest` sull'immagine precedente. Quindi un `docker compose pull` sul server può portare codice nuovo in qualsiasi momento.
+- **Sul server di produzione fissa un tag con la data.** Imposta nel `.env` `OPENKIS_IMAGE=robydoc/openkis-web:2026-10-25.1` (per esempio), prova il successivo su una copia di test, poi cambia il tag ed esegui `docker compose pull && docker compose up -d`. Per tornare indietro si fa lo stesso con il tag più vecchio, purché la versione nuova non abbia già modificato il database.
+- **L'immagine non contiene mai dati del database.** I dati restano nel volume del database e in `misc/`; la pubblicazione fallisce se nell'immagine finisce un dump SQL. Al primo avvio di una nuova immagine il suo tag compare nel log del container web ("installing code version ...").
+
 ## Controllo scheda
 
 - **Il riquadro in cima al modulo di modifica è una lista di controllo, non un errore.** Quando si apre in modifica una grotta o una cavità artificiale, OpenKIS elenca i dati mancanti (nome, descrizione, coordinate dell'ingresso, quota, dati speleometrici) o da completare (comune, provincia, sistema di riferimento, dislivello totale diverso da positivo + negativo). Non blocca mai il salvataggio. Una scheda senza segnalazioni mostra un riquadro verde "completa".
