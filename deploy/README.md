@@ -217,6 +217,26 @@ docker compose up -d          # the log shows "installing code version ..."
 With a local build: `git pull --recurse-submodules`, then
 `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
 
+#### Security updates of PHP and the system packages
+
+A running container never updates itself: a PHP security fix reaches a server
+only when the image is rebuilt and the container recreated. With the published
+image that is the upgrade above, once a newer image is out. With a local
+build, skip the cached layers so the newest packages are installed:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml build --pull --no-cache web
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --force-recreate
+```
+
+Ubuntu backports fixes without changing the PHP version (`php -v` prints
+8.3.6 before and after), so check the package instead: the PHP build is the
+`+php-...` part of `/usr/src/openkis/.openkis-image-version`, or
+`docker compose exec web dpkg-query -W libapache2-mod-php8.3`. The build stops
+if that package is older than `PHP_MIN_VERSION` in the `Dockerfile` (now
+`8.3.6-0ubuntu0.24.04.13`, the PHP2Shell fix); raise it when Ubuntu ships a
+new PHP security fix.
+
 New table fields are applied automatically by the framework. For installations
 older than 2024-03-25 see `extra/openkis/update.md` upstream.
 
