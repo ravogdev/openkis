@@ -29,6 +29,7 @@ say() { echo "[openkis] $*"; }
 : "${OPENKIS_HOME_SECTION:=}"
 : "${OPENKIS_ENABLE_PROXY:=0}"
 : "${OPENKIS_TRUSTED_PROXIES:=docker}"
+: "${OPENKIS_VALIDATOR_RULES_OFF:=}"
 
 # php single-quoted string literal
 phpq() { printf "'%s'" "$(printf '%s' "$1" | sed -e "s/\\\\/\\\\\\\\/g" -e "s/'/\\\\'/g")"; }
@@ -74,6 +75,10 @@ if [ ! -f "$CONF" ] || grep -q "$MARKER" "$CONF"; then
         # (mcp_users may use a key, mcp_write may use the write tools; admins always can)
         if [ -n "$OPENKIS_APIKEY_GROUPS" ]; then
             echo "\$_FN['apikey_groups'] = $(phpq "$OPENKIS_APIKEY_GROUPS");"
+        fi
+        # record validator: rules switched off, overriding the region's choice
+        if [ -n "$OPENKIS_VALIDATOR_RULES_OFF" ]; then
+            echo "\$_FN['openkis_validator_rules_off'] = $(phpq "$OPENKIS_VALIDATOR_RULES_OFF");"
         fi
         if [ -n "$OPENKIS_MCP_WRITE_GROUP" ]; then
             echo "\$_FN['openkis_mcp_write_group'] = $(phpq "$OPENKIS_MCP_WRITE_GROUP");"

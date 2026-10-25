@@ -38,3 +38,14 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 ## Modifiche allo schema del database
 
 - **Le colonne mancanti vengono aggiunte automaticamente.** Quando la definizione di una tabella riceve un nuovo campo, OpenKIS aggiunge la colonna alla prima pagina che apre quella tabella. Sulle tabelle grandi quella pagina sarà lenta una volta. Per gli import grandi, esegui prima l'SQL di migrazione, prima che il container web parta.
+
+## Controllo scheda
+
+- **Il riquadro in cima al modulo di modifica è una lista di controllo, non un errore.** Quando si apre in modifica una grotta o una cavità artificiale, OpenKIS elenca i dati mancanti (nome, descrizione, coordinate dell'ingresso, quota, dati speleometrici) o da completare (comune, provincia, sistema di riferimento, dislivello totale diverso da positivo + negativo). Non blocca mai il salvataggio. Una scheda senza segnalazioni mostra un riquadro verde "completa".
+- **È normale vederlo su molte schede vecchie.** Nel catasto della Lombardia circa una grotta su quattro ha almeno una segnalazione, soprattutto per la descrizione mancante. Avvisa i curatori prima dell'aggiornamento, perché non lo scambino per un guasto.
+- **Le regole si possono cambiare per regione** in `extra/openkis/custom/<regione>/validator_<mod>.php` (la Liguria ha le sue). La Lombardia usa le regole predefinite.
+- **Disattivare regole dal `.env`.** `OPENKIS_VALIDATOR_RULES_OFF` elenca le regole da disattivare, con precedenza sulla scelta della regione: per esempio `OPENKIS_VALIDATOR_RULES_OFF=description` toglie la segnalazione della descrizione mancante, `all` nasconde il riquadro. Le chiavi sono `name`, `description`, `coordinates`, `reference_system`, `elevation`, `comune`, `provincia`, `speleometric` e `depth_total`; una regola regionale si indica con la sua etichetta. Dopo la modifica riavvia il container web. Senza Docker, imposta `$_FN['openkis_validator_rules_off']`.
+
+## Solo Liguria
+
+- **Analisi AI dei rilievi.** Nei moduli di modifica delle grotte e delle cavità artificiali un riquadro analizza il disegno del rilievo con OpenAI. Funziona solo se `$_FN['openai_apikey']` è impostato in `openkis_config.local.php`; senza, il riquadro segnala che la chiave manca. L'immagine del rilievo viene inviata a OpenAI, e qualsiasi utente collegato può avviare un'analisi, quindi ognuna ha un costo sulla chiave. L'ultima analisi resta in `misc/_cache/openkis_ai_survey/` e viene mostrata di nuovo finché l'immagine non cambia.

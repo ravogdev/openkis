@@ -38,3 +38,14 @@ Things the application does on its own, limits that can surprise you, and the ri
 ## Database schema changes
 
 - **Missing columns are added automatically.** When a table definition gains a field, OpenKIS adds the column on the first page that opens that table. On large tables, that page is slow once. For big imports, run the migration SQL first, before the web container starts.
+
+## Record validator
+
+- **The banner at the top of the edit form is a checklist, not an error.** When a cave or an artificial cavity is opened for editing, OpenKIS lists the data that is missing (name, description, entrance coordinates, elevation, survey measurements) or to complete (comune, provincia, reference system, a total depth that doesn't match positive + negative). It never blocks a save. A record with nothing to report shows a green "complete" banner.
+- **Expect it on many old records.** On the Lombardia register about one cave in four shows a warning, mostly for a missing description. Tell the curators before the update, so they don't take it for a fault.
+- **The rules can be changed per region** in `extra/openkis/custom/<region>/validator_<mod>.php` (Liguria has its own). Lombardia uses the default rules.
+- **Switching rules off from `.env`.** `OPENKIS_VALIDATOR_RULES_OFF` lists rules to switch off, overriding the region's choice, for example `OPENKIS_VALIDATOR_RULES_OFF=description` to stop the missing-description warning, or `all` to hide the banner. The keys are `name`, `description`, `coordinates`, `reference_system`, `elevation`, `comune`, `provincia`, `speleometric` and `depth_total`; a regional rule is named by its label. Restart the web container after changing it. Outside Docker, set `$_FN['openkis_validator_rules_off']`.
+
+## Liguria only
+
+- **AI survey analysis.** In the cave and artificial cavity edit forms, a box analyses the survey drawing with OpenAI. It works only when `$_FN['openai_apikey']` is set in `openkis_config.local.php`; without it the box reports that the key is missing. The survey image is sent to OpenAI, and any logged-in user can start an analysis, so each one costs money on the key. The last analysis is kept in `misc/_cache/openkis_ai_survey/` and shown again while the image is unchanged.
