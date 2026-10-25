@@ -14,54 +14,34 @@ openkis_SetRegionMapCenter(45.62, 9.75, 8);
 
 
 /**
- * 
- * @param string $values
- * @return string
+ * Assigns the first free number to a new artificial cavity: CALO1, CALO2, ...
+ * The "CA" prefix (as in Piemonte and Umbria) keeps the codes apart from the
+ * natural caves, which use LO1, LO2, ...
+ *
+ * @param array $values
+ * @return array
  */
 function GeneraNumeroArtificials($values)
 {
-//se il numero non è già impostato non faccio nulla
-    if (!empty($values['code']) && $values['code']!= "")
+    if (!empty($values['code']))
     {
         return $values;
     }
-
-//inizializza la variabile oggetto che punta alla tabella
-    $table=FN_XMDBTable("ctl_artificials");
-//recupera i campi "id" e "code" di tutte le grotte (code corrisponde al numero di catasto) 
-    $grotte=$table->GetRecords(false,false,false,false,false,"id|code");
-    $max=0; //variabile che conterrà il primo numero libero
-    $grotte_by_code=array(); //array che contiene le grotte per codice
-    foreach($grotte as $k=> $grotta)
+    $prefix = "CALO";
+    $table = FN_XMDBTable("ctl_artificials");
+    $used = array();
+    foreach ($table->GetRecords(false, false, false, false, false, "id|code") as $item)
     {
-        $grotte_by_code[$k]=$grotta;
-//elimino a destra del "." esempio PI1210.2
-        $tmp=explode(".",$grotta['code']);
-        $tmp=$tmp[0];
-//prendo solo il numero
-        $numero=intval(str_replace("LO","",$tmp));
-        $grotte_by_code[$numero]['num']=$numero;
-        if ($numero > $max)
+        // CALO12.2 -> 12; codes in another format are ignored
+        $code = explode(".", strtoupper(trim($item['code'])));
+        if (preg_match('/^' . $prefix . '([0-9]+)$/', $code[0], $m))
         {
-            $max=$numero;
+            $used[intval($m[1])] = true;
         }
     }
-    $max++;
-//se è in Piemonte aggiunge "PI", altrimenti "AO"
-    $regione="LO";
-
-//cerca il primo numero libero
-    ksort($grotte_by_code);
-    for($i=1;
-    ; $i++)
-    {
-        if (empty($grotte_by_code[$i]))
-        {
-            $max=$i;
-            break;
-        }
-    }
-    $values['code']=$regione.$max;
+    for ($i = 1; isset($used[$i]); $i++)
+        ;
+    $values['code'] = $prefix . $i;
     return $table->UpdateRecord($values);
 }
 
@@ -117,24 +97,35 @@ function GeneraNumero($values)
 }
 
 /**
- * Installs the Lombardia table definition of the caves table
- * (custom/lombardia/ctl_caves.php) in the data directory.
+ * Installs the Lombardia table definitions (custom/lombardia/<table>.php) in
+ * the data directory: caves, springs and artificial cavities.
  *
- * Runs on every request, so the fast path is one stat of the custom file and
+ * Runs on every request, so the fast path is one stat of each custom file and
  * one read of a small sentinel that records which version of it was last
- * installed. The definition is copied only when the custom file changed since
+ * installed. A definition is copied only when the custom file changed since
  * then and differs from the installed one, so it is applied on a fresh install
  * too (where the generic definition was just copied with a newer mtime) and a
  * definition already in place is left alone.
  */
 function InizializzaDB()
 {
+    foreach (array("ctl_caves", "ctl_springs", "ctl_artificials") as $tablename)
+    {
+        cglombardia_InstallTableDefinition($tablename);
+    }
+}
+
+/**
+ * @param string $tablename
+ */
+function cglombardia_InstallTableDefinition($tablename)
+{
     global $_FN;
     $datadir = empty($_FN['datadir']) ? "misc" : $_FN['datadir'];
     $database = empty($_FN['database']) ? "fndatabase" : $_FN['database'];
-    $src = __DIR__ . "/ctl_caves.php";
-    $dest = "$datadir/$database/ctl_caves.php";
-    $sentinel = "$datadir/openkis_lombardia_ctl_caves.installed";
+    $src = __DIR__ . "/$tablename.php";
+    $dest = "$datadir/$database/$tablename.php";
+    $sentinel = "$datadir/openkis_lombardia_$tablename.installed";
     $signature = @filesize($src) . "-" . @filemtime($src);
     if (file_exists($sentinel) && trim(@file_get_contents($sentinel)) === $signature)
     {
@@ -162,16 +153,13 @@ function InizializzaDB()
 
 
 /**
- * 
+ * Validator of the "provincia" field of caves, springs and artificial
+ * cavities: a user may save a record only in a province of their RW_ groups.
+ *
  * @global array $_FN
- * @param type $prov
- * @return boolean
+ * @param string $prov
+ * @return boolean|string true, or the error message
  */
-
-//echo '<script>console.log("Lombardia"); </script>';
-//wh_log("Lombardia");
-//wh_log($group);
-
 function cglombardia_checkprovincia($prov)
 {
     global $_FN;
@@ -190,22 +178,27 @@ function cglombardia_checkprovincia($prov)
         return true;
     }
 
-    $table=FN_XMDBTable("ctl_caves");
-    $id=FN_GetParam("id",$_GET);
-    if ($id)
+    // users enabled on the record ("Gestisci gli utenti abilitati alla
+    // modifica") can keep editing it; the record is looked up in the table of
+    // the section being edited (caves, springs or artificial cavities)
+    $section = "caves";
+    if (!empty($_FN['mod']) && in_array($_FN['mod'], array("caves", "springs", "artificials")))
     {
-        $oldvalues=$table->GetRecordByPk($id);
-        //dprint_r($oldvalues);
-        //dprint_r($_FN['user'],$oldvalues);
-        require_once "{$_FN['src_finis']}/modules/dbview/FNDBVIEW.php";
-        $cavesconfig=FN_LoadConfig("modules/dbview/config.php","caves");
-        $cavesview=new FNDBVIEW($cavesconfig);
-        if ($cavesview->UserCanEditField($_FN['user'],$oldvalues))
+        $section = $_FN['mod'];
+    }
+    require_once "{$_FN['src_finis']}/modules/dbview/FNDBVIEW.php";
+    $config = FN_LoadConfig("modules/dbview/config.php", $section);
+    $id = FN_GetParam("id", $_GET);
+    if ($id && !empty($config['tables']))
+    {
+        $table = FN_XMDBTable($config['tables']);
+        $oldvalues = $table->GetRecordByPk($id);
+        $view = new FNDBVIEW($config);
+        if (is_array($oldvalues) && $view->UserCanEditField($_FN['user'], $oldvalues))
         {
             return true;
         }
     }
-
 
     return "Non puoi inserire dati nella provincia di $prov";
 }
