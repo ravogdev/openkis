@@ -48,6 +48,13 @@ if [ "$IMAGE_VERSION" != "$INSTALLED_VERSION" ]; then
         --exclude '/bs_map/conf/api_keys.local.js' \
         --exclude '/themes/api_keys.local.js' \
         "$SRC/" "$WEBROOT/"
+    # stale section settings removed from the code: finis reads only
+    # default.xml.php, but the old copies stay in the volume (no --delete)
+    for s in art_categorie art_tipologie bibliography fauna login reports springs; do
+        if [ -f "$WEBROOT/sections/$s/default.xml.php" ]; then
+            rm -f "$WEBROOT/sections/$s/default.xml"
+        fi
+    done
 fi
 
 # --- 2. configuration ----------------------------------------------------------
