@@ -181,7 +181,7 @@ function openkis_RequireSectionView($mod)
  *  - "all": the user may view the section (its records still follow the
  *    per-record groupview);
  *  - "public": the user may not view the section, but its table has the
- *    public_map field: only the records with public_map = "Y" are served
+ *    public_map field: the records with public_map = "N" are left out
  *    (see openkis_FilterPublicRecords());
  *  - otherwise the request ends with 403.
  *
@@ -201,7 +201,9 @@ function openkis_SectionAccess($mod)
 }
 
 /**
- * Keeps only the records marked public_map = "Y" when $access is "public".
+ * Leaves out the records marked public_map = "N" when $access is "public".
+ * An empty value counts as "Y" (the default), so records saved before the
+ * field existed, or inserted without it, stay on the public map.
  *
  * @param string $access result of openkis_SectionAccess()
  * @param array $config section config (its first table is the one read)
@@ -215,11 +217,14 @@ function openkis_FilterPublicRecords($access, $config, $results)
     $table = FN_XMDBTable($config['tables']);
     $pk = $table->primarykey;
     $public = array();
-    $rows = FN_XMETADBQuery("SELECT $pk FROM {$config['tables']} WHERE public_map LIKE 'Y'");
+    $rows = FN_XMETADBQuery("SELECT $pk,public_map FROM {$config['tables']}");
     if (is_array($rows))
     {
         foreach ($rows as $row)
-            $public[strval($row[$pk])] = true;
+        {
+            if (strtoupper(trim(strval($row['public_map']))) !== "N")
+                $public[strval($row[$pk])] = true;
+        }
     }
     $ret = array();
     foreach ($results as $key => $row)
