@@ -2,7 +2,8 @@
 # Builds the web image from this checkout and smoke-tests it on a throwaway
 # stack (its own compose project, port and volumes; a running installation
 # and its .env are not touched):
-#   fresh install via the setup wizard, home page, caves list, caves map,
+#   no SQL dump anywhere in the image, fresh install via the setup wizard,
+#   home page, caves list, caves map,
 #   control center, demo cave import, Refresh map data, map exports, APCu,
 #   no PHP errors in the pages or the container log.
 # The stack and its volumes are removed at the end, pass or fail. Nothing is
@@ -11,7 +12,8 @@
 #   git submodule update --init --recursive
 #   deploy/smoke-test.sh            # SMOKE_PORT=8099 by default
 #
-# CI runs it before docker-deploy is moved to a new develop commit.
+# CI runs it before docker-deploy is moved to a new develop commit, and
+# before an image is published to Docker Hub (publish-image workflow).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -39,6 +41,19 @@ get() { # get <path> [curl args...] -> body in $WORK/page, prints status
 
 echo "== build"
 dc build web
+
+echo "== no SQL dump in the image"
+# Only the two SQL files the image needs are allowed; anything else named like
+# a dump, or that reads like one (mysqldump, mariadb-dump, phpMyAdmin), fails
+dumps=$(docker run --rm --entrypoint sh openkis-web:local -c '
+    find / -xdev -type f \( -iname "*.sql" -o -iname "*.sql.*" -o -iname "*.dump" -o -iname "*.dump.*" \) 2>/dev/null \
+        | grep -vxE "/usr/src/openkis/(sql/openkis_indexes|extra/openkis/install/demo_cave)\.sql"
+    grep -rlIE -m1 "^(-- (MySQL|MariaDB) dump|-- phpMyAdmin SQL Dump|/\*!40(014|101|103) SET )" / \
+        --exclude-dir=proc --exclude-dir=sys --exclude-dir=dev 2>/dev/null
+    true')
+[ -z "$dumps" ] || fail "the image contains SQL dumps: $(echo "$dumps" | sort -u | tr '\n' ' ')"
+ok "no SQL dump in the image"
+
 echo "== start"
 dc up -d
 for _ in $(seq 1 60); do
