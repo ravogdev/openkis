@@ -44,6 +44,7 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 - **Il riquadro in cima al modulo di modifica è una lista di controllo, non un errore.** Quando si apre in modifica una grotta o una cavità artificiale, OpenKIS elenca i dati mancanti (nome, descrizione, coordinate dell'ingresso, quota, dati speleometrici) o da completare (comune, provincia, sistema di riferimento, dislivello totale diverso da positivo + negativo). Non blocca mai il salvataggio. Una scheda senza segnalazioni mostra un riquadro verde "completa".
 - **È normale vederlo su molte schede vecchie.** Nel catasto della Lombardia circa una grotta su quattro ha almeno una segnalazione, soprattutto per la descrizione mancante. Avvisa i curatori prima dell'aggiornamento, perché non lo scambino per un guasto.
 - **Le regole si possono cambiare per regione** in `extra/openkis/custom/<regione>/validator_<mod>.php` (la Liguria ha le sue). La Lombardia usa le regole predefinite.
+- **Disattivare regole dal `.env`.** `OPENKIS_VALIDATOR_RULES_OFF` elenca le regole da disattivare, con precedenza sulla scelta della regione: per esempio `OPENKIS_VALIDATOR_RULES_OFF=description` toglie la segnalazione della descrizione mancante, `all` nasconde il riquadro. Le chiavi sono `name`, `description`, `coordinates`, `reference_system`, `elevation`, `comune`, `provincia`, `speleometric` e `depth_total`; una regola regionale si indica con la sua etichetta. Dopo la modifica riavvia il container web. Senza Docker, imposta `$_FN['openkis_validator_rules_off']`.
 
 ## Solo Liguria
 

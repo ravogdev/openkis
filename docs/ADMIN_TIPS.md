@@ -44,6 +44,7 @@ Things the application does on its own, limits that can surprise you, and the ri
 - **The banner at the top of the edit form is a checklist, not an error.** When a cave or an artificial cavity is opened for editing, OpenKIS lists the data that is missing (name, description, entrance coordinates, elevation, survey measurements) or to complete (comune, provincia, reference system, a total depth that doesn't match positive + negative). It never blocks a save. A record with nothing to report shows a green "complete" banner.
 - **Expect it on many old records.** On the Lombardia register about one cave in four shows a warning, mostly for a missing description. Tell the curators before the update, so they don't take it for a fault.
 - **The rules can be changed per region** in `extra/openkis/custom/<region>/validator_<mod>.php` (Liguria has its own). Lombardia uses the default rules.
+- **Switching rules off from `.env`.** `OPENKIS_VALIDATOR_RULES_OFF` lists rules to switch off, overriding the region's choice, for example `OPENKIS_VALIDATOR_RULES_OFF=description` to stop the missing-description warning, or `all` to hide the banner. The keys are `name`, `description`, `coordinates`, `reference_system`, `elevation`, `comune`, `provincia`, `speleometric` and `depth_total`; a regional rule is named by its label. Restart the web container after changing it. Outside Docker, set `$_FN['openkis_validator_rules_off']`.
 
 ## Liguria only
 

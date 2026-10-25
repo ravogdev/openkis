@@ -127,6 +127,7 @@ them.
 | `OPENKIS_APIKEY_GROUPS`, `OPENKIS_MCP_WRITE_GROUP` | personal API keys: groups that may use a key and groups allowed to use the MCP write tools (comma separated; admins always can). Empty = `mcp_users` and `mcp_write` |
 | `THUNDERFOREST_API_KEY`, `MAPTILER_API_KEY`, `ALGOLIA_DOCSEARCH_API_KEY` | optional map/search keys |
 | `OPENKIS_TRUSTED_PROXIES` | reverse proxies whose `X-Forwarded-For` header gives the visitor's address: addresses or CIDR ranges, comma separated. `docker` (default) = the other containers on the web container's networks, such as the bundled Caddy; `none` = off. A proxy on the host or on another machine is added by address. Needed for the login lockout and the access log behind a proxy |
+| `OPENKIS_VALIDATOR_RULES_OFF` | record validator rules to switch off, comma separated, overriding the region's rules: `name`, `description`, `coordinates`, `reference_system`, `elevation`, `comune`, `provincia`, `speleometric`, `depth_total`, or the label of a regional rule; `all` hides the banner. Empty (default) = all rules on |
 | `OPENKIS_DISPLAY_ERRORS` | `off` (default). `on` shows PHP errors in pages; development only, warnings corrupt the KML/JSON/GPX exports |
 | `TZ` | time zone for PHP and MariaDB |
 | `OPENKIS_DB_INDEXES`, `OPENKIS_DB_INDEXES_INTERVAL` | `1` (default) applies `sql/openkis_indexes.sql` at start and every `3600` s; `0` = off / only at start (see `INDEXES.md`) |
