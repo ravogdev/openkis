@@ -15,6 +15,9 @@ require_once(__DIR__ . "/openkis/install/openkis_install.php");
 // customisation (extra/openkis/custom/<region>) sets them; queued because
 // FN_LoadConfig is not available yet at this point of the bootstrap
 FN_IncludeScript("extra/openkis/openkis_defaults.php");
+// survey records of a restricted cave get the cave's groups, before the
+// section or endpoint of this request reads them
+FN_IncludeScript("extra/openkis/openkis_survey_groups.php");
 
 /**
  * Map position for a regional customisation: the region's own centre, unless
@@ -411,6 +414,93 @@ function openkis_RefreshMapData()
         }
     }
     $done = array_merge($done, openkis_SyncRecordIds());
+    $done = array_merge($done, openkis_SyncSurveyGroups(true));
+    return $done;
+}
+
+/**
+ * Survey tables and the table of the item each survey belongs to:
+ * survey table => array(field with the item code, item table).
+ */
+function openkis_SurveyLinks()
+{
+    return array(
+        "ctl_surveys" => array("codecave", "ctl_caves"),
+        "ctl_surveys_artificials" => array("codeartificial", "ctl_artificials"),
+        "ctl_surveys_glacial" => array("codeglacial", "ctl_glacial"),
+    );
+}
+
+/**
+ * Gives the survey records of a restricted item (a cave, artificial cavity or
+ * glacial cave with its own groupview) the groupview of that item, so they
+ * reach only the item's groups and the administrators everywhere a survey is
+ * read (section pages, search, API, MCP). Surveys of items without a
+ * restriction keep their own groups. An item that loses its restriction
+ * leaves its surveys as they are, for the curators to open again.
+ *
+ * Runs only when a survey or item table changed since the last run, as
+ * recorded in the data folder, unless $force is true.
+ *
+ * @param bool $force
+ * @return array what was done, one line per changed table
+ */
+function openkis_SyncSurveyGroups($force = false)
+{
+    global $_FN;
+    $done = array();
+    $statefile = "{$_FN['datadir']}/openkis_survey_groups.synced";
+    $state = array();
+    if (!$force && file_exists($statefile))
+    {
+        $state = @json_decode(@file_get_contents($statefile), true);
+        if (!is_array($state))
+            $state = array();
+    }
+    $newstate = array();
+    $changed = false;
+    foreach (openkis_SurveyLinks() as $surveytable => $link)
+    {
+        list($codefield, $itemtable) = $link;
+        if (!file_exists("{$_FN['datadir']}/{$_FN['database']}/$surveytable.php") || !file_exists("{$_FN['datadir']}/{$_FN['database']}/$itemtable.php"))
+            continue;
+        $surveys = FN_XMDBTable($surveytable);
+        $items = FN_XMDBTable($itemtable);
+        if (!$surveys || !$items || !isset($surveys->fields['groupview'], $surveys->fields[$codefield], $items->fields['groupview'], $items->fields['code']))
+            continue;
+        // the update time has a one second resolution: a change made in the
+        // same second as this run must not be taken as already seen
+        $stamp = min(time() - 1, max($surveys->GetLastUpdateTime(), $items->GetLastUpdateTime()));
+        $newstate[$surveytable] = isset($state[$surveytable]) ? $state[$surveytable] : 0;
+        if (isset($state[$surveytable]) && $state[$surveytable] >= $stamp && $stamp < time() - 1)
+            continue;
+        $restricted = array();
+        foreach ((array) $items->GetRecords(false, false, false, false, false, array("code", "groupview")) as $item)
+        {
+            if (trim(strval($item['groupview'])) !== "")
+                $restricted[strval($item['code'])] = strval($item['groupview']);
+        }
+        $count = 0;
+        if (count($restricted) > 0)
+        {
+            $pk = $surveys->primarykey;
+            foreach ((array) $surveys->GetRecords(false, false, false, false, false, array($pk, $codefield, "groupview")) as $survey)
+            {
+                $code = strval($survey[$codefield]);
+                if (isset($restricted[$code]) && strval($survey['groupview']) !== $restricted[$code])
+                {
+                    $surveys->UpdateRecord(array($pk => $survey[$pk], "groupview" => $restricted[$code]));
+                    $count++;
+                }
+            }
+        }
+        if ($count > 0)
+            $done[] = "$surveytable: " . FN_Translate("survey records given their item's groups") . " $count";
+        $newstate[$surveytable] = $stamp;
+        $changed = true;
+    }
+    if ($changed && is_writable($_FN['datadir']))
+        @file_put_contents($statefile, json_encode($newstate));
     return $done;
 }
 
