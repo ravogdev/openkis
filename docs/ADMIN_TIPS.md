@@ -33,7 +33,13 @@ Things the application does on its own, limits that can surprise you, and the ri
 
 - **Map exports are cached** (KML, GPX, JSON, markers). The cache is dropped automatically when a record is saved through OpenKIS, and after an hour at the latest.
 - **After editing data directly in the database** (an SQL import or a manual `UPDATE`), run **Control center > Utilities > Refresh map data**, or `php refresh-cache.php` inside the container. That refreshes the maps, recalculates coordinates and re-syncs the record id counters. Without it, maps can show old data, and new records can get an id that is already used.
+- **The bibliography box of the cave pages comes from a lookup table.** OpenKIS copies the codes listed in each bibliography item ("Grotte", `codecaves`, and `codeartificials` for artificial cavities) into the table `ctl_bibliography_links`, one row per code, and the cave and artificial cavity pages read it from there. The table is rebuilt from the bibliography on the first cave page opened after a bibliography item is saved through OpenKIS, and on the first one opened when the last rebuild is more than an hour old. After changing the bibliography directly in the database, run **Refresh map data** (it marks the bibliography as changed) or wait up to an hour. Don't edit `ctl_bibliography_links` by hand: it is emptied and refilled at every rebuild.
+- **Codes in the bibliography lists are matched exactly**, ignoring spaces around the commas: `LO1172, LO1170` links both caves. A space or a typo inside a code (`LO 2797`) does not match the cave `LO2797`, so that item doesn't appear on its page; fix the list in the bibliography item.
 - **Table structure is cached for up to 10 minutes.** After adding or changing a column by hand, use "Clear cache" or restart the web container, so the change is seen at once.
+
+## Regional sites
+
+- **Country and region pre-filled in the insert forms.** On the italia, marche, liguria and umbria sites the "new cave" form (and, except on liguria, the "new artificial cavity" and "new spring" forms) starts with country ITALIA and the site's region. The italia site, being national, pre-fills no region: the curator picks it (it used to pre-fill MARCHE by mistake). The values are only a starting point in the form; records saved from the API or an import get no default.
 
 ## Database schema changes
 

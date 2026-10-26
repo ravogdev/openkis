@@ -306,7 +306,9 @@ docker compose exec -u www-data web php /var/www/html/refresh-cache.php
 Otherwise they are rebuilt within an hour
 (`$_FN['openkis_map_cache_maxage']`, seconds; 0 disables the cache).
 
-The same command also re-syncs the counters that give the ids of new records
+The same command marks the bibliography as changed, so the lookup table of the
+bibliography box on the cave pages (`ctl_bibliography_links`) is rebuilt at
+the next cave page; otherwise that happens within an hour too. It also re-syncs the counters that give the ids of new records
 (the `fn_sequences` table), so records added afterwards through OpenKIS
 continue after the highest id inserted directly. Without it OpenKIS notices a
 taken id on the next insert and re-syncs that counter by itself.
