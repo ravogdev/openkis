@@ -19,6 +19,19 @@ FN_IncludeScript("extra/openkis/openkis_defaults.php");
 // section or endpoint of this request reads them
 FN_IncludeScript("extra/openkis/openkis_survey_groups.php");
 
+// Uploaded files of the cave register (survey drawings, photos, attachments,
+// PDFs...) are served through openkis_file.php after a per-record permission
+// check, behind an opaque address that does not reveal where the file is
+// stored. The two hooks below tell finis to build file links with
+// openkis_FileUrl() and to let the thumbnail endpoint ask openkis_FileAccess()
+// who may read a file. Set $_FN['openkis_protected_files'] = false (in
+// openkis_config.local.php) to keep the old direct-path behaviour.
+if (!isset($_FN['openkis_protected_files']) || $_FN['openkis_protected_files'])
+{
+    $_FN['xmetadb_file_url'] = "openkis_FileUrl";
+    $_FN['xmetadb_file_access'] = "openkis_FileAccess";
+}
+
 /**
  * Map position for a regional customisation: the region's own centre, unless
  * the administrator changed the map defaults (admin section "configopenkis",
@@ -416,6 +429,257 @@ function openkis_RefreshMapData()
     $done = array_merge($done, openkis_SyncRecordIds());
     $done = array_merge($done, openkis_SyncSurveyGroups(true));
     return $done;
+}
+
+/**
+ * Register tables whose files are protected, mapped to the item that owns the
+ * access rule:
+ *   table => array(item table, code field linking to it or null if the table
+ *                  is the item itself, public photo field or null).
+ *
+ * The item tables (a cave, an artificial cavity, a glacial cave, a spring)
+ * carry the groupview that decides who may read the item and its files. Child
+ * tables (surveys, photos, attachments, fauna of a cave) point at their item
+ * through a code field. "_versions" tables hold historical copies and are
+ * never public. The public photo field is the entrance photo that stays
+ * visible to everyone when the item is not restricted.
+ *
+ * A table that is not listed here is not part of the cave register, so
+ * openkis_FileAccess() leaves it to the default behaviour.
+ *
+ * @return array
+ */
+function openkis_FileItems()
+{
+    return array(
+        "ctl_caves" => array("ctl_caves", null, "photo1"),
+        "ctl_artificials" => array("ctl_artificials", null, "photo1"),
+        "ctl_glacial" => array("ctl_glacial", null, "photo1"),
+        "ctl_springs" => array("ctl_springs", null, "photo1"),
+        "ctl_caves_versions" => array("ctl_caves", "code", null),
+        "ctl_artificials_versions" => array("ctl_artificials", "code", null),
+        "ctl_glacial_versions" => array("ctl_glacial", "code", null),
+        "ctl_surveys" => array("ctl_caves", "codecave", null),
+        "ctl_photos" => array("ctl_caves", "codecave", null),
+        "ctl_attachments" => array("ctl_caves", "codecave", null),
+        "ctl_faunacave" => array("ctl_caves", "codecave", null),
+        "ctl_surveys_artificials" => array("ctl_artificials", "codeartificial", null),
+        "ctl_photos_artificials" => array("ctl_artificials", "codeartificial", null),
+        "ctl_attachments_artificials" => array("ctl_artificials", "codeartificial", null),
+        "ctl_surveys_glacial" => array("ctl_glacial", "codeglacial", null),
+    );
+}
+
+/**
+ * Secret key for the opaque file tokens, derived from the site secret so it
+ * never appears in the code or the data folder. A separate key per purpose
+ * ("enc" to encrypt, "nonce" to derive the nonce) keeps the two uses apart.
+ *
+ * @param string $purpose
+ * @return string 32 raw bytes
+ */
+function openkis_FileKey($purpose)
+{
+    return hash_hmac("sha256", "openkis-file-$purpose", FN_GetSiteSecret(), true);
+}
+
+/**
+ * Opaque token that stands for one protected file. It carries, encrypted, the
+ * table, record id, field, stored file name and the thumbnail flag, so the
+ * endpoint can find the file again and check that the name still matches the
+ * record. The address reveals none of this and cannot be edited to point at
+ * another file: a changed byte fails the authenticated decryption.
+ *
+ * The nonce is derived from the plaintext, so the same file always gives the
+ * same token (the browser and the map caches can reuse it).
+ *
+ * @param string $table
+ * @param string $id
+ * @param string $field
+ * @param string $filename stored value of the field
+ * @param bool $thumb
+ * @return string|false base64url(nonce . box), or false if sodium is missing
+ */
+function openkis_FileToken($table, $id, $field, $filename, $thumb = false)
+{
+    if (!function_exists("sodium_crypto_secretbox"))
+        return false;
+    $plain = json_encode(array((string) $table, (string) $id, (string) $field, (string) $filename, $thumb ? 1 : 0));
+    $nonce = substr(hash_hmac("sha256", $plain, openkis_FileKey("nonce"), true), 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    $box = sodium_crypto_secretbox($plain, $nonce, openkis_FileKey("enc"));
+    return rtrim(strtr(base64_encode($nonce . $box), "+/", "-_"), "=");
+}
+
+/**
+ * Reverses openkis_FileToken(). Returns array(table, id, field, filename,
+ * thumb) or false when the token is missing, malformed or tampered with.
+ *
+ * @param string $token
+ * @return array|false
+ */
+function openkis_FileTokenDecode($token)
+{
+    if (!function_exists("sodium_crypto_secretbox_open") || $token == "")
+        return false;
+    $raw = base64_decode(strtr($token, "-_", "+/"), true);
+    if ($raw === false || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES)
+        return false;
+    $nonce = substr($raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    $box = substr($raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+    $plain = sodium_crypto_secretbox_open($box, $nonce, openkis_FileKey("enc"));
+    if ($plain === false)
+        return false;
+    $data = json_decode($plain, true);
+    if (!is_array($data) || count($data) < 5)
+        return false;
+    return array(
+        "table" => (string) $data[0],
+        "id" => (string) $data[1],
+        "field" => (string) $data[2],
+        "filename" => (string) $data[3],
+        "thumb" => !empty($data[4]),
+    );
+}
+
+/**
+ * Hook for XMETATable::getFileUrl(): the web address of a record's file (or
+ * its thumbnail) in the cave register. Instead of the file's own path in the
+ * data folder it returns an opaque link to openkis_file.php, which checks who
+ * may read the file before serving it. Returns false when the field is empty
+ * or the file is missing, so callers fall back as before.
+ *
+ * Registered in $_FN['xmetadb_file_url'] (see the top of this file).
+ *
+ * @param XMETATable $xmltable the record's table
+ * @param array $recordvalues the record (or enough of it to find the file)
+ * @param string $recordkey the file field
+ * @param bool $thumb
+ * @return string|false
+ */
+function openkis_FileUrl($xmltable, $recordvalues, $recordkey, $thumb = false)
+{
+    global $_FN;
+    if (!is_array($recordvalues) || !isset($recordvalues[$recordkey]) || !isset($recordvalues[$xmltable->primarykey]))
+        $recordvalues = $xmltable->GetRecord($recordvalues);
+    $value = isset($recordvalues[$recordkey]) ? $recordvalues[$recordkey] : "";
+    $id = isset($recordvalues[$xmltable->primarykey]) ? $recordvalues[$xmltable->primarykey] : "";
+    if ($value === "" || $value === null || $id === "")
+        return false;
+    // the physical file must exist (and be a real file on disk, not inline
+    // base64 data, which is not used for register uploads)
+    $path = $thumb ? $xmltable->getThumbPath($recordvalues, $recordkey) : $xmltable->getFilePath($recordvalues, $recordkey);
+    if (!$path || $path[0] == "?" || !file_exists($path))
+        return false;
+    $token = openkis_FileToken($xmltable->tablename, $id, $recordkey, $value, $thumb);
+    if ($token === false)
+    {
+        // sodium missing: keep the file reachable the old way rather than
+        // breaking the page
+        return (!empty($_FN['siteurl']) ? $_FN['siteurl'] : "") . $path;
+    }
+    // the loader of the 3d viewer picks the format from the extension, so the
+    // address keeps a dummy name with the real extension; it is decorative
+    $name = "file";
+    $ext = strtolower(pathinfo($value, PATHINFO_EXTENSION));
+    if ($ext !== "")
+        $name .= "." . $ext;
+    return (!empty($_FN['siteurl']) ? $_FN['siteurl'] : "") . "openkis_file.php?f=" . $token . "&n=" . rawurlencode($name);
+}
+
+/**
+ * Whether the current user may read a register file. Used by openkis_file.php
+ * and by the thumbnail endpoint ($_FN['xmetadb_file_access']).
+ *
+ * The rule follows the register pages:
+ *  - administrators read everything;
+ *  - a table that is not part of the register keeps the default behaviour;
+ *  - the entrance photo of a cave that is not restricted stays public;
+ *  - otherwise the file follows the groups of the record, or of the item it
+ *    belongs to when the record itself carries none; with no restriction a
+ *    logged-in user is enough.
+ *
+ * @param string $table
+ * @param string $id
+ * @param string $field
+ * @return bool
+ */
+function openkis_FileAccess($table, $id, $field)
+{
+    global $_FN;
+    if (FN_IsAdmin())
+        return true;
+    $items = openkis_FileItems();
+    if (!isset($items[$table]))
+        return true; // not a register table: unchanged behaviour
+    list($itemtable, $codefield, $publicfield) = $items[$table];
+    $t = FN_XMDBTable($table);
+    if (!$t)
+        return false;
+    $record = $t->GetRecordByPrimaryKey($id);
+    if (!is_array($record) || !isset($record[$t->primarykey]))
+        return false;
+    // the item that owns the access rule: the record itself for item tables,
+    // or the item found through the code field for a child record
+    $item = false;
+    if ($codefield === null)
+        $item = $record;
+    elseif (!empty($record[$codefield]))
+    {
+        $it = FN_XMDBTable($itemtable);
+        $rows = $it ? $it->GetRecords(array("code" => $record[$codefield])) : false;
+        if (is_array($rows) && count($rows))
+            $item = reset($rows);
+    }
+    $itemgroups = ($item && isset($item['groupview'])) ? trim(strval($item['groupview'])) : "";
+    // public entrance photo of a non-restricted item
+    if ($publicfield !== null && $field === $publicfield && $item && $itemgroups === "")
+    {
+        $publicmap = isset($item['public_map']) ? strtoupper(trim(strval($item['public_map']))) : "";
+        if ($publicmap !== "N")
+            return true;
+    }
+    // the record's own groups win; otherwise the item's groups apply
+    $groups = trim(strval(isset($record['groupview']) ? $record['groupview'] : ""));
+    if ($groups === "")
+        $groups = $itemgroups;
+    if ($groups === "")
+        return $_FN['user'] != ""; // no restriction: any logged-in user
+    if ($_FN['user'] == "")
+        return false;
+    $uservalues = FN_GetUser($_FN['user']);
+    $usergroups = explode(",", isset($uservalues['group']) ? $uservalues['group'] : "");
+    foreach (explode(",", $groups) as $g)
+    {
+        if ($g !== "" && in_array($g, $usergroups))
+            return true;
+    }
+    return false;
+}
+
+/**
+ * Relative address of a file for the 3d cave viewer (cave_viewer.php). The
+ * viewer's loader prepends the site URL and reads the format from the
+ * extension, so this returns the opaque endpoint path with a dummy name that
+ * keeps the real extension. Falls back to the old data-folder path only when
+ * the opaque token cannot be built (sodium missing).
+ *
+ * @param string $table
+ * @param string $id
+ * @param string $field
+ * @param string $filename stored value of the field
+ * @return string
+ */
+function openkis_CaveViewerFile($table, $id, $field, $filename)
+{
+    global $_FN;
+    $token = openkis_FileToken($table, $id, $field, $filename, false);
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    if ($token === false)
+    {
+        $database = empty($_FN['database']) ? "fndatabase" : $_FN['database'];
+        return "misc/$database/$table/$id/$field/$filename";
+    }
+    return "openkis_file.php?f=$token&n=file" . ($ext !== "" ? ".$ext" : "");
 }
 
 /**

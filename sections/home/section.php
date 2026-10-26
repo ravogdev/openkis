@@ -51,7 +51,7 @@ foreach ($regioni as $k => $v)
     $regioni[$k]['urlimg'] = false;
     if (!empty($v['photo1']))
     {
-        $regioni[$k]['urlimg'] = $table_regioni->getFilePath($v, "photo1");
+        $regioni[$k]['urlimg'] = $table_regioni->getFileUrl($v, "photo1", true);
     }
 }
 $vars['regioni'] = $regioni;
@@ -150,7 +150,7 @@ foreach ($regioni as $k => $v)
     $regioni[$k]['urlimg'] = false;
     if (!empty($v['photo1']))
     {
-        $regioni[$k]['urlimg'] = $table_regioni->getFilePath($v, "photo1");
+        $regioni[$k]['urlimg'] = $table_regioni->getFileUrl($v, "photo1", true);
     }
 }
 $vars['regioni'] = $regioni;
