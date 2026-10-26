@@ -34,3 +34,6 @@ CLAUDE.md
 *.swo
 *.tmp
 *~
+# database images of a site are built from a private dump (deploy/db-image)
+deploy/db-image/initdb/
+*.sql.gz

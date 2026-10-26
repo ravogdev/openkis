@@ -40,7 +40,8 @@ services:
       - ${OPENKIS_DATA_DIR:-openkis_www}:/var/www/html
 
   db:
-    image: mariadb:11.4
+    # OPENKIS_DB_IMAGE: a database image with the site's data (db-image/README.md)
+    image: ${OPENKIS_DB_IMAGE:-mariadb:11.4}
     restart: unless-stopped
     environment:
       TZ: ${TZ:-UTC}

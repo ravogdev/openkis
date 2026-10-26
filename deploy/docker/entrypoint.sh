@@ -5,7 +5,8 @@
 #     time (misc/, .htaccess, sections created from the admin area, ...)
 #  2. writes extra/openkis_config.local.php from the environment
 #  3. creates the api_keys.local.js files from the examples / environment
-#  4. waits for the database and starts the install wizard on a fresh volume
+#  4. waits for the database and starts the install wizard on a fresh volume,
+#     then applies the regional database updates not applied yet
 set -euo pipefail
 
 WEBROOT=/var/www/html
@@ -224,10 +225,71 @@ for i in $(seq 1 "$OPENKIS_DB_WAIT"); do
     sleep 1
 done
 
+db_sql() {
+    mariadb -h "$OPENKIS_DB_HOST" -u "$OPENKIS_DB_USER" --password="$OPENKIS_DB_PASSWORD" \
+        --skip-ssl -N "$OPENKIS_DB_NAME" "$@"
+}
+
+# a database that already has its users (a database image with the site's
+# data, see db-image/README.md, or a restored dump) needs no setup wizard: the
+# framework writes misc/ from it on the first request
 if [ ! -d "$WEBROOT/misc/fndatabase" ]; then
     mkdir -p "$WEBROOT/misc"
-    touch "$WEBROOT/misc/firstinstall"
-    say "fresh installation: open the site to run the setup wizard"
+    if [ "$(db_sql -e "SELECT COUNT(*) > 0 FROM fn_users" 2>/dev/null)" = "1" ]; then
+        say "new web volume on a database that has its users: no setup wizard"
+    else
+        touch "$WEBROOT/misc/firstinstall"
+        say "fresh installation: open the site to run the setup wizard"
+    fi
+fi
+
+# --- 4b. regional database updates --------------------------------------------------
+# extra/openkis/custom/<OPENKIS_CUSTOM>/updates/*.sql bring an existing regional
+# database (one migrated from the old site, or restored from a backup) in line
+# with the code: settings, permissions, renamed columns. Each file runs once, in
+# name order, before Apache starts; the table openkis_db_updates records which
+# ones the database has (and backup.sh dumps it with the rest, so a restored
+# backup keeps its own state). A failed file stops the sequence and is retried
+# at the next start.
+# A database created empty (new installation, or its volume deleted) gets its
+# tables from the code itself, already current: the files present in this image
+# are recorded as "baseline" without running them, and only later files will run.
+UPDATES_DIR="$SRC/extra/openkis/custom/$OPENKIS_CUSTOM/updates"
+if [ -n "$OPENKIS_CUSTOM" ] && [ -d "$UPDATES_DIR" ]; then
+    ntables=$(db_sql -e "SELECT COUNT(*) FROM information_schema.tables
+                         WHERE table_schema = DATABASE()" 2>/dev/null || echo error)
+    nsections=$(db_sql -e "SELECT COUNT(*) FROM information_schema.tables
+                           WHERE table_schema = DATABASE() AND table_name = 'fn_sections'" 2>/dev/null || echo error)
+    if [ "$ntables" = "0" ] || [ "$nsections" = "1" ]; then
+        db_sql -e "CREATE TABLE IF NOT EXISTS openkis_db_updates (
+                       name VARCHAR(190) NOT NULL PRIMARY KEY,
+                       applied DATETIME NOT NULL,
+                       how VARCHAR(16) NOT NULL DEFAULT 'applied') ENGINE=InnoDB" \
+            || say "WARNING: cannot create the table openkis_db_updates"
+        db_sql -e "ALTER TABLE openkis_db_updates
+                       ADD COLUMN IF NOT EXISTS how VARCHAR(16) NOT NULL DEFAULT 'applied'" 2>/dev/null || true
+    fi
+    for f in "$UPDATES_DIR"/*.sql; do
+        [ -f "$f" ] || continue
+        n=$(basename "$f")
+        case "$n" in *[!A-Za-z0-9._-]*) say "WARNING: database update $n skipped: bad file name"; continue ;; esac
+        if [ "$ntables" = "0" ]; then
+            db_sql -e "INSERT IGNORE INTO openkis_db_updates (name, applied, how) VALUES ('$n', NOW(), 'baseline')" \
+                || say "WARNING: database update $n not recorded as baseline"
+            continue
+        fi
+        [ "$nsections" = "1" ] || break
+        [ "$(db_sql -e "SELECT COUNT(*) FROM openkis_db_updates WHERE name = '$n'" 2>/dev/null)" = "0" ] || continue
+        if db_sql < "$f" 2>/tmp/openkis-update.err; then
+            db_sql -e "INSERT INTO openkis_db_updates (name, applied, how) VALUES ('$n', NOW(), 'applied')" \
+                || say "WARNING: database update $n applied but not recorded"
+            say "database update $n applied"
+        else
+            say "WARNING: database update $n failed: $(tr '\n' ' ' < /tmp/openkis-update.err)"
+            break
+        fi
+    done
+    [ "$ntables" = "0" ] && say "empty database: the regional updates of this image are recorded as baseline"
 fi
 
 # --- 5. database indexes ----------------------------------------------------------
@@ -236,10 +298,6 @@ fi
 # first use, so it runs now and then again every OPENKIS_DB_INDEXES_INTERVAL
 # seconds (0 = only at start), in the background so Apache is not delayed.
 INDEXES_SQL="$SRC/sql/openkis_indexes.sql"
-db_sql() {
-    mariadb -h "$OPENKIS_DB_HOST" -u "$OPENKIS_DB_USER" --password="$OPENKIS_DB_PASSWORD" \
-        --skip-ssl -N "$OPENKIS_DB_NAME" "$@"
-}
 count_indexes() {
     db_sql -e "SELECT COUNT(DISTINCT table_name, index_name) FROM information_schema.statistics
                WHERE table_schema = DATABASE() AND index_name LIKE 'okx\\_%'" 2>/dev/null || echo 0

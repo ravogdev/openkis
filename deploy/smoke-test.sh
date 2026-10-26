@@ -3,7 +3,7 @@
 # stack (its own compose project, port and volumes; a running installation
 # and its .env are not touched):
 #   no SQL dump anywhere in the image, fresh install via the setup wizard,
-#   home page, caves list, caves map,
+#   home page, caves list, caves map, every table of the code (create-schema.php),
 #   control center, demo cave import, Refresh map data, map exports, APCu,
 #   no PHP errors in the pages or the container log.
 # The stack and its volumes are removed at the end, pass or fail. Nothing is
@@ -43,11 +43,12 @@ echo "== build"
 dc build web
 
 echo "== no SQL dump in the image"
-# Only the two SQL files the image needs are allowed; anything else named like
+# Only the SQL files the image needs are allowed (indexes, demo cave, regional
+# updates); anything else named like
 # a dump, or that reads like one (mysqldump, mariadb-dump, phpMyAdmin), fails
 dumps=$(docker run --rm --entrypoint sh openkis-web:local -c '
     find / -xdev -type f \( -iname "*.sql" -o -iname "*.sql.*" -o -iname "*.dump" -o -iname "*.dump.*" \) 2>/dev/null \
-        | grep -vxE "/usr/src/openkis/(sql/openkis_indexes|extra/openkis/install/demo_cave)\.sql"
+        | grep -vxE "/usr/src/openkis/(sql/openkis_indexes|extra/openkis/install/demo_cave|extra/openkis/custom/[a-z]+/updates/[0-9]{3}-[a-z0-9-]+)\.sql"
     grep -rlIE -m1 "^(-- (MySQL|MariaDB) dump|-- phpMyAdmin SQL Dump|/\*!40(014|101|103) SET )" / \
         --exclude-dir=proc --exclude-dir=sys --exclude-dir=dev 2>/dev/null
     true')
@@ -84,6 +85,13 @@ for path in / '/index.php?mod=caves' '/index.php?mod=map_caves' '/index.php?fnap
     grep -q 'fnapp=install' "$WORK/page" && [ "$path" != '/index.php?fnapp=controlcenter' ] && fail "$path still redirects to the installer"
     ok "$path 200"
 done
+
+echo "== schema from scratch"
+dc exec -T -u www-data web php /var/www/html/create-schema.php > "$WORK/schema" 2>&1 || { cat "$WORK/schema"; fail "create-schema.php failed"; }
+[ "$(php_errors "$WORK/schema")" = 0 ] || { cat "$WORK/schema"; fail "create-schema.php shows PHP errors"; }
+ntables=$(dc exec -T db mariadb -N -uopenkis -psmoke-db-pass openkis -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()")
+[ "$ntables" -ge 40 ] || fail "create-schema.php left only $ntables tables"
+ok "create-schema.php: $ntables tables"
 
 echo "== demo cave + Refresh map data"
 dc exec -T web cat /usr/src/openkis/extra/openkis/install/demo_cave.sql \

@@ -240,6 +240,58 @@ new PHP security fix.
 New table fields are applied automatically by the framework. For installations
 older than 2024-03-25 see `extra/openkis/update.md` upstream.
 
+#### Regional database updates
+
+Changes to the settings or the data of a regional database (sections,
+permissions, tables) ship as numbered SQL files in
+`extra/openkis/custom/<region>/updates/` (for example
+`lombardia/updates/007-springs.sql`). When `OPENKIS_CUSTOM` names the region,
+the entrypoint applies, before Apache starts, every file the database doesn't
+have yet, in name order. Each one runs once and is recorded in the table
+`openkis_db_updates`. The log shows `database update <file> applied`. A file
+that fails stops the sequence with a warning and is retried at the next start.
+The table is part of the database, so a backup restored with its dump keeps
+its own record and gets only the updates it is missing.
+
+A database created empty (a new installation, or a site whose database volume
+was deleted) gets its tables from the code, already current. At its first start
+the files present in the image are recorded as `baseline` without running them,
+and only files added later will run. This only holds if the code and the
+updates agree: a change to a table goes in the table definition of the code
+(for Lombardia `custom/lombardia/ctl_*.php`) and, for the databases that
+already exist, in a new update file. Deleting the database volume deletes its
+data: the data come back only from a backup (`backup.sh`) or, for Lombardia,
+from the old site's dump and the migration script. A database image built from
+that dump fills a new volume and brings it up to date by itself:
+see [db-image/README.md](db-image/README.md).
+
+Every revision can also build its whole schema from nothing. As upstream,
+the schema lives in the code (the table definitions) and finis creates a table
+when a page first uses it; `create-schema.php` creates them all at once with
+the same finis functions, on an installed site:
+
+```sh
+docker compose exec -u www-data web php /var/www/html/create-schema.php
+```
+
+`deploy/schema.sh [region] > schema.sql` writes the schema of the checkout
+built that way (structure only, from a throwaway stack); with
+`SCHEMA_COMPARE=<db container> SCHEMA_COMPARE_DB=<name> SCHEMA_COMPARE_PASS=<root password>`
+it also lists the tables and columns that differ from a running database. A
+migrated database has more (finis never drops the old tables and columns) and
+may keep older column types, which finis reads as they are.
+
+The update files contain the structure only (schema, sections, permissions),
+never data. Each one goes in the same commit as the code change that needs it,
+so the image of every commit carries exactly its own database changes.
+
+So a site keeps up with the database changes just by upgrading the image. A
+new change goes in a new file with the next number: never edit a file that has
+already been released, since sites that applied it don't run it again. For
+Lombardia, each file is also a step of the migration script used for the
+first import of the old database, and every step can safely run on a database
+where it already ran.
+
 ### Map data after editing the database directly
 
 The map layers (KML, GPX, JSON, markers) are cached and refreshed by
