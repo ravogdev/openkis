@@ -10,3 +10,5 @@ deploy/backups
 **/*.dump.*
 !sql/openkis_indexes.sql
 !extra/openkis/install/demo_cave.sql
+# regional database updates applied by the entrypoint (settings, no data dumps)
+!extra/openkis/custom/*/updates/*.sql
