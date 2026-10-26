@@ -1,0 +1,105 @@
+# Publishes the web image to Docker Hub. On every push to develop, and when
+# run by hand (Actions -> Publish Docker image -> Run workflow, on develop),
+# it builds the image from that commit with the finis submodule, runs
+# deploy/smoke-test.sh on it (fresh install, pages, caves map, Refresh map
+# data, and no SQL dump anywhere in the image), and only if that passes pushes
+# it as
+#   robydoc/openkis-web:latest
+#   robydoc/openkis-web:YYYY-MM-DD.N   (UTC date; N = 1, 2, ... per day)
+# A failing build or test pushes nothing, so :latest stays on the last image
+# that passed.
+#
+# GitHub shows the "Run workflow" button only for workflows on the default
+# branch (master), so until this file reaches master the image is published
+# by pushes to develop only.
+#
+# Setup (once), in Settings -> Secrets and variables -> Actions:
+# - secret DOCKERHUB_USERNAME: the Docker Hub account (robydoc);
+# - secret DOCKERHUB_TOKEN: a Docker Hub personal access token with
+#   Read & Write access (Docker Hub -> Account settings -> Personal access
+#   tokens), not the account password.
+# Optional variable DOCKERHUB_IMAGE (default: robydoc/openkis-web).
+
+name: Publish Docker image
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# one publish at a time, so two runs never pick the same date tag
+concurrency:
+  group: publish-image
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ vars.DOCKERHUB_IMAGE || 'robydoc/openkis-web' }}
+    steps:
+      - name: Check branch and secrets
+        env:
+          HAS_USER: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+          HAS_TOKEN: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+        run: |
+          if [ "$GITHUB_REF" != refs/heads/develop ]; then
+            echo "::error::images are published from develop only (this run is on $GITHUB_REF)"
+            exit 1
+          fi
+          if [ "$HAS_USER" != true ] || [ "$HAS_TOKEN" != true ]; then
+            echo "::error::set the DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets (see the top of this workflow)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Pick the date tag
+        id: tag
+        run: |
+          set -euo pipefail
+          day=$(date -u +%Y-%m-%d)
+          # tags already pushed today: <day> or <day>.N
+          tags=$(curl -fsS "https://hub.docker.com/v2/repositories/$IMAGE/tags?page_size=100&name=$day" \
+            | jq -r '.results[].name')
+          last=$(printf '%s\n' "$tags" | sed -nE "s/^$day(\.([0-9]+))?$/\2/p" \
+            | sed 's/^$/1/' | sort -n | tail -1)
+          tag="$day.$(( ${last:-0} + 1 ))"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "::notice::publishing $IMAGE:$tag"
+          # shown by the running image and in the entrypoint log
+          echo "$tag" > .openkis-image-version
+
+      - name: Build the image and smoke-test it
+        run: deploy/smoke-test.sh
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if docker manifest inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+            echo "::error::$IMAGE:$TAG already exists on Docker Hub; re-run the workflow"
+            exit 1
+          fi
+          for t in "$TAG" latest; do
+            docker tag openkis-web:local "$IMAGE:$t"
+            docker push "$IMAGE:$t"
+          done
+          echo "::notice::pushed $IMAGE:$TAG and $IMAGE:latest ($(git rev-parse --short HEAD))"
+          {
+            echo "### Published"
+            echo "- \`$IMAGE:$TAG\`"
+            echo "- \`$IMAGE:latest\`"
+            echo "- commit \`$(git rev-parse --short HEAD)\`, finis \`$(git -C finis rev-parse --short HEAD)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
