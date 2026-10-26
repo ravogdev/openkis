@@ -156,6 +156,12 @@ scans the whole bibliography table. A link table (bibliography id, cave code)
 with an index would make it a lookup. Low priority while the bibliography is
 small.
 
+Done (issue #20): `ctl_bibliography_links` (bibliography id, field, code),
+indexed on (field, code), rebuilt in one transaction from the bibliography
+when its `updated` marker moves or after an hour
+(`extra/openkis_bibliography.inc.php`). A cave with no linked item no longer
+builds the bibliography view at all.
+
 ### 10. WISH home page
 
 `sections/home/section.php:37` reads all caves (7 columns) and sorts them twice

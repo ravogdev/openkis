@@ -33,7 +33,13 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 
 - **Le esportazioni delle mappe sono in cache** (KML, GPX, JSON, marker). La cache viene eliminata automaticamente quando un record viene salvato da OpenKIS, e comunque dopo un'ora al massimo.
 - **Dopo modifiche fatte direttamente nel database** (un import SQL o un `UPDATE` a mano), esegui **Pannello di controllo > Utilità > Aggiorna dati mappa**, oppure `php refresh-cache.php` nel container. Così le mappe si aggiornano, le coordinate vengono ricalcolate e i contatori degli id dei record vengono riallineati. Senza questo passaggio le mappe possono mostrare dati vecchi, e un nuovo record può ricevere un id già usato.
+- **Il riquadro Bibliografia delle schede grotta viene da una tabella di consultazione.** OpenKIS copia i codici elencati in ogni voce di bibliografia ("Grotte", `codecaves`, e `codeartificials` per le cavità artificiali) nella tabella `ctl_bibliography_links`, una riga per codice, e le schede delle grotte e delle cavità artificiali li leggono da lì. La tabella viene ricostruita dalla bibliografia alla prima scheda grotta aperta dopo che una voce di bibliografia è stata salvata da OpenKIS, e alla prima aperta quando l'ultima ricostruzione ha più di un'ora. Dopo modifiche alla bibliografia fatte direttamente nel database, esegui **Aggiorna dati mappa** (segna la bibliografia come modificata) oppure aspetta fino a un'ora. Non modificare `ctl_bibliography_links` a mano: a ogni ricostruzione viene svuotata e riempita di nuovo.
+- **I codici negli elenchi della bibliografia devono corrispondere esattamente**, a parte gli spazi attorno alle virgole: `LO1172, LO1170` collega entrambe le grotte. Uno spazio o un errore dentro un codice (`LO 2797`) non corrisponde alla grotta `LO2797`, quindi quella voce non compare nella sua scheda; correggi l'elenco nella voce di bibliografia.
 - **La struttura delle tabelle resta in cache fino a 10 minuti.** Dopo aver aggiunto o modificato una colonna a mano, usa "Svuota cache" o riavvia il container web, perché la modifica sia vista subito.
+
+## Siti regionali
+
+- **Nazione e regione precompilate nei moduli di inserimento.** Sui siti italia, marche, liguria e umbria il modulo "nuova grotta" (e, tranne che su liguria, anche "nuova cavità artificiale" e "nuova sorgente") parte con nazione ITALIA e la regione del sito. Il sito italia, essendo nazionale, non precompila la regione: la sceglie il curatore (prima precompilava MARCHE per errore). I valori sono solo un punto di partenza nel modulo; i record salvati dall'API o da un import non ricevono valori predefiniti.
 
 ## Modifiche allo schema del database
 

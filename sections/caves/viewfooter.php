@@ -38,12 +38,18 @@ if (!empty($_FN['openkis_custom']) && file_exists("extra/openkis/custom/{$_FN['o
         echo " <a class=\"btn btn-secondary\" target=\"_blank\" href=\"{$_FN['siteurl']}openkis_kml.php?mod={$_FN['mod']}&big_icons=1&filter_code=" . urlencode($row['code']) . "&filename=$forcename&absolute=1\">Scarica kml</a>";
         echo "</div>";
     }
-    $config = FN_LoadConfig("", "bibliography");
-    $biblio = new FNDBVIEW($config);
-    $params['appendquery'] = "codecaves LIKE '{$row['code']}' OR codecaves LIKE '{$row['code']},%' OR codecaves LIKE '%,{$row['code']},%' OR codecaves LIKE '%,{$row['code']}' ";
-    $params['fields'] = "id,title,authors,year";
-    $biblio_items = $biblio->GetResults(false, $params);
-    $biblio_items = FN_ArraySortByKey($biblio_items, "year");
+    // items linked to this code, through the bibliography link table (#20)
+    $biblio_items = array();
+    $biblio_filter = openkis_BibliographyFilter($row['code'], "codecaves");
+    if ($biblio_filter !== false)
+    {
+        $config = FN_LoadConfig("", "bibliography");
+        $biblio = new FNDBVIEW($config);
+        $params['appendquery'] = $biblio_filter;
+        $params['fields'] = "id,title,authors,year";
+        $biblio_items = $biblio->GetResults(false, $params);
+        $biblio_items = FN_ArraySortByKey($biblio_items, "year");
+    }
     if (is_array($biblio_items) && count($biblio_items))
     {
         echo "<div class=\"alert alert-warning\">";
