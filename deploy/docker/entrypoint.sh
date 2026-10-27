@@ -117,6 +117,24 @@ if [ -n "$OPENKIS_CUSTOM" ] && [ ! -f "$WEBROOT/extra/openkis/custom/$OPENKIS_CU
     say "WARNING: OPENKIS_CUSTOM=$OPENKIS_CUSTOM but extra/openkis/custom/$OPENKIS_CUSTOM/ does not exist"
 fi
 
+# The map page (bs_map.htm) is bs_map.tp.html with the layers of the region,
+# bs_map/conf/layers_<OPENKIS_CUSTOM>.js (layers_default.js when the region has
+# none). The copy in the code is upstream's and only bs_map.php writes it
+# again, which nothing calls on a new site: written here on every start, so the
+# region's layers and the script versions of the current template are used.
+MAP_LAYERS=bs_map/conf/layers_default.js
+case "$OPENKIS_CUSTOM" in
+    ""|*[!A-Za-z0-9_-]*) ;;
+    *) [ -f "$WEBROOT/bs_map/conf/layers_$OPENKIS_CUSTOM.js" ] && MAP_LAYERS="bs_map/conf/layers_$OPENKIS_CUSTOM.js" ;;
+esac
+if [ -f "$WEBROOT/bs_map.tp.html" ]; then
+    sed "s#bs_map/conf/layers_default\.js#$MAP_LAYERS#" "$WEBROOT/bs_map.tp.html" > "$WEBROOT/bs_map.htm.tmp" \
+        && chown www-data:www-data "$WEBROOT/bs_map.htm.tmp" \
+        && mv -f "$WEBROOT/bs_map.htm.tmp" "$WEBROOT/bs_map.htm" \
+        && say "map page bs_map.htm written with $MAP_LAYERS" \
+        || say "WARNING: cannot write bs_map.htm"
+fi
+
 if [ -n "$OPENKIS_HOME_SECTION" ] && [ ! -d "$WEBROOT/sections/$OPENKIS_HOME_SECTION" ] \
    && [ ! -d "$WEBROOT/finis/src/sections/$OPENKIS_HOME_SECTION" ]; then
     say "WARNING: OPENKIS_HOME_SECTION=$OPENKIS_HOME_SECTION but sections/$OPENKIS_HOME_SECTION/ does not exist"

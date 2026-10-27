@@ -9,16 +9,15 @@
         <meta name="description" content="">
         <meta name="author" content="">
         <link rel="icon" href="favicon.ico">
-
         <title>MAP</title>
         <!---------------------------  map ---------------------------------------->
-        <link href="bs_map/css/ol.css" rel="stylesheet">
+        <link href="bs_map/css/ol.css?v=6.15.1" rel="stylesheet">
         <link rel="stylesheet" href="bs_map/fonts/glyphicon.css" type="text/css">
         <link rel="stylesheet" href="bs_map/css/layerswitcher.css" type="text/css">
         <!-- Bootstrap core CSS -->
         <link href="bs_map/css/bootstrap.css" rel="stylesheet">
         <link href="bs_map/css/bootstrap-theme.css" rel="stylesheet">
-        <link href="bs_map/css/custom.css?q" rel="stylesheet">
+        <link href="bs_map/css/custom.css?v=20261027" rel="stylesheet">
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
         <link href="bs_map/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
         <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
@@ -96,8 +95,8 @@
             <form onsubmit="return false;" class="mytoolbar navbar-left " role="search">
                 <div class="form-group ">
                     <div class="btn-group " role="group" >
-                        <button class="btn dropdown-toggle " type="button" data-toggle="dropdown">
-                            <span class="caret"></span></button>
+                        <button class="btn dropdown-toggle" type="button" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-menu-hamburger"></span></button>
                         <ul id="layersmenu" class="dropdown-menu">
                             <li>
                                 <div class="row">
@@ -144,13 +143,14 @@
             <p>Velocità:<span  class="gpsspeed"></span>km/h</p>            
         </div>
 
+        <script charset="utf-8" src="bs_map/conf/api_keys.local.js"></script>
         <script src="bs_map/js/splx_utility.js"></script>
         <script src="bs_map/js/jquery.min.js"></script>
         <script src="bs_map/js/bootstrap.min.js"></script>
         <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
         <script src="bs_map/js/ie10-viewport-bug-workaround.js"></script>
-        <script src="bs_map/js/ol.js"></script>
-        <script charset="utf-8" src="bs_map/js/OPS_Map.js?s"></script>
+        <script src="bs_map/js/ol.js?v=6.15.1"></script>
+        <script charset="utf-8" src="bs_map/js/OPS_Map.js?v=20261027"></script>
         <script charset="utf-8" src="bs_map/js/OPS_Map_draw.js?s"></script>
         <script charset="utf-8" src="bs_map/js/typeahead.bundle.js"></script>
         <script charset="utf-8" src="bs_map/conf/config.js"></script>
@@ -164,9 +164,9 @@
             };
 
         </script>
-        <script defer="defer" src="bs_map/index.js"></script>
+        <script defer="defer" src="bs_map/index.js?v=20261021"></script>
         <script>
-            document.UpdateLayer=function ()
+            document.UpdateLayer = function ()
             {
                 //console.log("UPDATE LAYERS")
                 var mod = getParameterByName("mod");
@@ -174,27 +174,38 @@
                 var showPointNames = (zoom > 16) ? true : false;
                 for (var i in OPS_Map.kmllayers)
                 {
-                    if (OPS_Map.kmllayers[i].path.toString().indexOf("openkis_kml.php?mod="+mod) == 0)
+                    if (OPS_Map.kmllayers[i].path.toString().indexOf("openkis_kml.php?mod=" + mod) == 0)
                     {
                         var val = $('#mainlayer').val();
-                        
-                        if (val.indexOf("openkis_kml.php?mod="+mod) == 0)
+
+                        if (val.indexOf("openkis_kml.php?mod=" + mod) == 0)
                         {
                             //console.log("set source");
                             //console.log(val);
                             var zoom = OPS_Map.map.getView().getZoom();
                             var showPointNames = (zoom > 16) ? true : false;
+                            /*    var iconUrlFunction =  function (href) {
+                             let url = href;
+                             let path = window.location.href;
+                             path = path.slice(0, path.lastIndexOf('/'));
+                             if (href.indexOf(path) === 0) {
+                             url = href.replace(path, dataPath)
+                             }
+                             console.log(url);
+                             return url;
+                             } ;*/
                             OPS_Map.kmllayers[i].setSource(new ol.source.Vector({
                                 crossOrigin: "Anonymous",
-                                url:$('#mainlayer').val(),
+                                url: $('#mainlayer').val(),
                                 projection: OPS_Map.view.getProjection(),
                                 format: new ol.format.KML(
                                         {
+                                            //  iconUrlFunction:iconUrlFunction,
                                             writeStyles: true,
                                             showPointNames: showPointNames
                                         })
                             }));
-                            
+
                         }
                     }
 
