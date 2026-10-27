@@ -10,6 +10,10 @@ services:
       db:
         condition: service_healthy
     ports:
+      # Plain HTTP. With the Caddy HTTPS front end on (profile "https"), set
+      # OPENKIS_HTTP_PORT=127.0.0.1:8080 in .env: the port then listens only on
+      # the loopback address, so it is not reachable from outside and logins
+      # cannot travel unencrypted. Caddy talks to the container directly.
       - "${OPENKIS_HTTP_PORT:-8080}:80"
     environment:
       TZ: ${TZ:-UTC}
@@ -63,6 +67,8 @@ services:
 
   # Optional HTTPS front end. Started only with the "https" profile:
   # COMPOSE_PROFILES=https and OPENKIS_DOMAIN in .env (see README).
+  # Also set OPENKIS_HTTP_PORT=127.0.0.1:8080, so the web service's plain HTTP
+  # port stays on the loopback address and is not reachable from outside.
   caddy:
     image: caddy:2
     profiles: ["https"]
