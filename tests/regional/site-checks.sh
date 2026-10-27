@@ -185,6 +185,27 @@ for device in desktop android; do
             check "$tag: $p 200" [ "$code" = 200 ]
             check "$tag: $p no PHP errors" [ "$(php_errors)" = 0 ]
         done
+        # the map asks openkis_map_access.js.php which layers it may load
+        # (#99): a section it lists as allowed must answer 200, one it lists
+        # as not allowed is skipped by the map and answers 403
+        code=$(get /openkis_map_access.js.php)
+        check "$tag: map access script 200" [ "$code" = 200 ]
+        check "$tag: map access script no PHP errors" [ "$(php_errors)" = 0 ]
+        check "$tag: map access script defines OPENKIS_MAP_ACCESS" grep -q '^var OPENKIS_MAP_ACCESS = {' "$WORK/page"
+        cp "$WORK/page" "$WORK/access"
+        for m in caves springs artificials; do
+            [ -n "$(sqlv "SELECT id FROM fn_sections WHERE id = '$m'")" ] || continue
+            level=$(grep -o "\"$m\":\"[a-z]*\"" "$WORK/access" | cut -d'"' -f4)
+            if can_view "$role" "$m"; then
+                check "$tag: map access $m = all (got '$level')" [ "$level" = all ]
+            fi
+            code=$(get "/openkis_kml.php?mod=$m")
+            if [ -n "$level" ]; then
+                check "$tag: map loads $m, openkis_kml.php 200 (got $code)" [ "$code" = 200 ]
+            else
+                check "$tag: map skips $m, openkis_kml.php 403 (got $code)" [ "$code" = 403 ]
+            fi
+        done
     done
 done
 

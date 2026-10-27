@@ -36,8 +36,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Docker Hub at most once a day: the first run of the day downloads the base
+  # images (deploy/base-images.sh) and keeps them in the Actions cache under a
+  # key with the date; the test jobs load them from there, so their builds ask
+  # Docker Hub nothing. Pull requests into develop also find the cache saved
+  # by develop's runs.
+  base-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      key: ${{ steps.key.outputs.key }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: key
+        run: echo "key=docker-base-images-$(date -u +%Y-%m-%d)-$(deploy/base-images.sh --list | tr ' :/' '-_-')" >> "$GITHUB_OUTPUT"
+
+      - id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/base-images.tar
+          key: ${{ steps.key.outputs.key }}
+          lookup-only: true
+
+      - name: Download the base images (first run of the day)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          deploy/base-images.sh
+          docker save -o ~/base-images.tar $(deploy/base-images.sh --list)
+
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true   # the publish workflow may have saved it meanwhile
+        with:
+          path: ~/base-images.tar
+          key: ${{ steps.key.outputs.key }}
+
   smoke-test:
     name: smoke-test (${{ matrix.custom || 'generic' }})
+    needs: base-images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,12 +89,23 @@ jobs:
         with:
           submodules: recursive
 
+      - uses: actions/cache/restore@v4
+        id: base-images
+        with:
+          path: ~/base-images.tar
+          key: ${{ needs.base-images.outputs.key }}
+
+      - name: Load the base images of the day
+        if: steps.base-images.outputs.cache-hit == 'true'
+        run: docker load -q -i ~/base-images.tar && deploy/base-images.sh --mark
+
       - name: Build the image and smoke-test it
         run: deploy/smoke-test.sh
         env:
           SMOKE_CUSTOM: ${{ matrix.custom }}
 
   lombardia-migration:
+    needs: base-images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -64,6 +113,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - uses: actions/cache/restore@v4
+        id: base-images
+        with:
+          path: ~/base-images.tar
+          key: ${{ needs.base-images.outputs.key }}
+
+      - name: Load the base images of the day
+        if: steps.base-images.outputs.cache-hit == 'true'
+        run: docker load -q -i ~/base-images.tar && deploy/base-images.sh --mark
 
       - name: Old Lombardia database -> migration -> regional updates -> checks
         run: tests/lombardia/migration-test.sh

@@ -45,6 +45,7 @@ get() { # get <path> [curl args...] -> body in $WORK/page, prints status
 }
 
 echo "== build"
+./base-images.sh   # Docker Hub at most once a day
 dc build web
 
 echo "== no SQL dump in the image"

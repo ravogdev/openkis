@@ -63,6 +63,7 @@ wait_healthy() { # wait_healthy <service>
 }
 
 echo "== build"
+./base-images.sh   # Docker Hub at most once a day
 dc build web
 
 echo "== old database: ${DUMP:-fixture} + lombardia-migrate.sql"

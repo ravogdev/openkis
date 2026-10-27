@@ -479,5 +479,15 @@ push to `develop`, and moves the `docker-deploy` branch to a `develop` commit
 only after they all pass. The *Publish Docker image* workflow runs them again
 on every push to `develop` before pushing the image to Docker Hub.
 
+Docker Hub limits how many requests an address may make, and a build would ask
+it about the base images every time. So the tests take the Ubuntu base image
+and MariaDB from Docker Hub at most once a day: `deploy/base-images.sh` (run by
+both test scripts before building) downloads an image only if it was not
+downloaded, or tried, today, and the build then uses the local copy. If Docker
+Hub refuses, it uses the local copy, or takes the same official image from
+`mirror.gcr.io`. In CI the first run of the day keeps the two images in the
+Actions cache and the other jobs and runs load them from there. Package updates
+(`apt-get`) are not affected: they come from the Ubuntu archive at every build.
+
 Not tested: a real hostname with TLS, e-mail, photo/survey uploads through the
 UI, the regional customisations other than Lombardia.
