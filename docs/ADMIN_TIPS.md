@@ -21,6 +21,7 @@ Things the application does on its own, limits that can surprise you, and the ri
 - **Public map.** Users who can't open a restricted section see on the public map every cave except those marked **Shown on the public map** = No. The default is Yes, also for caves saved before the field existed, so a curator sets No only to hide a single cave from the public. Group restrictions (`groupview`) still apply, and hide a cave whatever this value. After changing it directly in the database, run **Control center > Utilities > Refresh map data**.
 - **Group names are in English.** Hidden caves are restricted to `hidden_caves`, archaeological ones to `archaeologists`; writers of the register are `w_caves`, of fauna `w_fauna`. The old Italian names (`grotte_nascoste`, `archeologi`) are renamed by the Lombardia migration; a group created by hand with an old name is no longer offered when restricting a cave.
 - **Admins** (level 10) bypass group checks, including the API key check below.
+- **Each page reads the logged-in user once.** Level, groups and the active flag are read at the start of the page and reused for every permission check on it, so a change to a user (in the control center or directly in `fn_users`) applies from that user's next page. Saving in the control center or in the profile shows the saved values straight away. Custom code that writes `fn_users` without `FN_UpdateUser()` must read the user again with `FN_GetUser($user, false)`.
 
 ## MCP server and API keys
 
