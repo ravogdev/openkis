@@ -5,7 +5,7 @@ $t_wish = FN_XMDBTable("ctl_wishregioni");
 $regione = $t_wish->GetRecord(array("id"=>$row['id_regione']));
 //dprint_r($row);
 //dprint_r($regione);
-$img = $regione ? $t_wish->getFilePath($regione, "photo1") : '';
+$img = $regione ? $t_wish->getFileUrl($regione, "photo1", true) : '';
 $url = $regione['portal'] ?? '';
 $link = $row['link'];
 
@@ -58,12 +58,18 @@ if (!empty($row['latitude']))
     
     
 }
-$config = FN_LoadConfig("", "bibliography");
-$biblio = new FNDBVIEW($config);
-$params['appendquery'] = "codecaves LIKE '{$row['code']}' OR codecaves LIKE '{$row['code']},%' OR codecaves LIKE '%,{$row['code']},%' OR codecaves LIKE '%,{$row['code']}' ";
-$params['fields'] = "id,title,authors,year";
-$biblio_items = $biblio->GetResults(false, $params);
-$biblio_items = FN_ArraySortByKey($biblio_items, "year");
+// items linked to this code, through the bibliography link table (#20)
+$biblio_items = array();
+$biblio_filter = openkis_BibliographyFilter($row['code'], "codecaves");
+if ($biblio_filter !== false)
+{
+    $config = FN_LoadConfig("", "bibliography");
+    $biblio = new FNDBVIEW($config);
+    $params['appendquery'] = $biblio_filter;
+    $params['fields'] = "id,title,authors,year";
+    $biblio_items = $biblio->GetResults(false, $params);
+    $biblio_items = FN_ArraySortByKey($biblio_items, "year");
+}
 if (is_array($biblio_items) && count($biblio_items))
 {
     echo "<div class=\"alert alert-warning\">";
@@ -91,9 +97,9 @@ if (is_array($items) && count($items))
     $items = FN_ArraySortByKey($items, "priority");
     foreach ($items as $survey_item)
     {
-        if (!empty($survey_item['filelox']) && file_exists("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelox/{$survey_item['filelox']}"))
+        if (!empty($survey_item['filelox']) && file_exists("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelox/{$survey_item['filelox']}") && openkis_FileAccess("ctl_surveys", $survey_item['id'], "filelox"))
         {
-            $file = urlencode("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelox/{$survey_item['filelox']}");
+            $file = urlencode(openkis_CaveViewerFile("ctl_surveys", $survey_item['id'], "filelox", $survey_item['filelox']));
             $iframe_href = "{$_FN['siteurl']}openkis_cave_viewer.php?f={$file}";
 //            echo "<iframe style=\"width:100%;height:800px;border:0px\" src=\"$iframe_href\"></iframe>";
  //           dprint_r($survey_item);

@@ -8,7 +8,9 @@
 - 3D cave visualization (CaveView.js)
 - Multi-region support with customizable themes
 - Data export: KML, GPX, JSON, Shapefile
-- REST / MCP API endpoints
+- REST API endpoints
+- MCP server (`openkis_mcp.php`) for AI assistants, with personal API keys and
+  read only access by default
 
 ## Requirements
 
@@ -18,6 +20,9 @@
 - `git` to clone the repository (the Finis framework is a git submodule)
 
 ## Installation
+
+> **Docker:** `deploy/` contains a Docker Compose environment (Apache + PHP 8.3 +
+> MariaDB). See [deploy/README.md](deploy/README.md).
 
 ### 1. Get the code
 
@@ -116,6 +121,14 @@ the first time each section is opened. No SQL dump is needed.
   centre). Themes `openkis_liguria`, `openkis_lombardia`, ... extend the base
   `openkis` theme.
 
+- **MCP server** (optional): AI assistants (Claude, ChatGPT, ...) can query and,
+  if allowed, edit the database through `openkis_mcp.php`. An administrator
+  enables the users in **Configuration > MCP server** (group `mcp_users`);
+  enabled users generate their key on the same page. Keys are read only unless
+  the administrator allows the write tools (group `mcp_write`). Connect with:
+  `claude mcp add --transport http openkis https://<site>/openkis_mcp.php --header "X-API-Key: <key>"`.
+  See [docs/MCP_SERVER.md](docs/MCP_SERVER.md).
+
 ### XAMPP notes (Linux, `/opt/lampp`)
 
 - Apache runs as user `daemon`; `setup.sh` without `-w` uses `chmod -R a+w`,
@@ -125,6 +138,25 @@ the first time each section is opened. No SQL dump is needed.
   the PHP error log is `/opt/lampp/logs/php_error_log`.
 - To reinstall from scratch: `sudo rm -rf misc`, drop the database, run
   `./setup.sh` again.
+
+## Testing
+
+`tests/smoke_test.sh` checks a copy of the code served by a local web server:
+`php -l` on every file, optionally a clean install (`setup.sh` + wizard),
+every section as anonymous and administrator, the KML/GPX/JSON/markers
+exports and their cache, the control-center "Refresh map data" page,
+`refresh-cache.php`, `sql/openkis_indexes.sql` and the PHP error log.
+
+```bash
+# existing test copy (defaults: ~/public_html/openkis_test, DB openkis_test, XAMPP root without password)
+tests/smoke_test.sh
+# wipe the test copy and its database, install from scratch, then run every check
+tests/smoke_test.sh -f
+```
+
+`tests/smoke_test.sh -h` lists the environment variables (`TEST_DIR`,
+`TEST_URL`, `TEST_DB`, `DB_USER`, `DB_PASS`, `FINIS_SRC`, ...). It copies the
+git `HEAD` of the repository and of `finis`, so commit before testing.
 
 ## Upgrading
 

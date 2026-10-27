@@ -30,6 +30,7 @@ if (!file_exists("sections/$mod"))
 {
     die();
 }
+$openkis_access = openkis_SectionAccess($mod);
 $config=FN_LoadConfig("modules/dbview/config.php",$mod);
 $dbview=new FNDBVIEW($config);
 $tablename=$config['tables'];
@@ -46,18 +47,6 @@ foreach($fields_to_read as $field)
 $params['fields']=implode(",",$fields);
 $params['filter_code']=$codes;
 $idresult=false;
-if (isset($_GET['debug']))
-{
-    dprint_r(__FILE__."  ".__LINE__." : ".FN_GetExecuteTimer());
-}
-openkis_UpdateCoords("caves");
-openkis_UpdateCoords("artificials");
-openkis_UpdateCoords("springs");
-if (isset($_GET['debug']))
-{
-    dprint_r(__FILE__."  ".__LINE__." : ".FN_GetExecuteTimer());
-}
-
 $data=$_FN['sitename']."-".FN_now();
 $forcename=FN_GetParam("filename",$_GET,"html");
 $data=str_replace(" ","_",str_replace(":","-",$data));
@@ -70,32 +59,41 @@ else
     $filename="$data-$mod.kml";
 }
 
-$results=$dbview->GetResults(false,$params,$idresult);
-
-
-if (isset($_GET['debug']))
-{
-    dprint_r("idresult:$idresult");
-}
-
-
 //evita di ricalcolare tutto se non è cambiato niente nel db o in questo file-->
-$idcache="__{$idresult}$minimal$big_icons$absolute$iconsize";
+$idcache=openkis_MapCacheKey(__FILE__, $config);
 if ($_FN['enable_compress_gzip'])
 {
     $idcache.=".gz";
 }
-
 if (isset($_GET['debug']))
 {
     dprint_r("idcache:$idcache");
 }
-
-$maxtime=max(filectime(__FILE__),$table->GetLastUpdateTime());
-$cache=FN_GetGlobalVarValue("$idcache",$maxtime);
-if (empty($absolute) && !empty($cache) && empty($nocache))
+if (empty($absolute) && empty($nocache))
 {
-    PrintKml($cache,$filename);
+    $cache=openkis_MapCacheGet($idcache,$tablename);
+    if ($cache!==null)
+    {
+        PrintKml($cache,$filename);
+    }
+}
+if (isset($_GET['debug']))
+{
+    dprint_r(__FILE__."  ".__LINE__." : ".FN_GetExecuteTimer());
+}
+openkis_UpdateCoords("caves");
+openkis_UpdateCoords("artificials");
+openkis_UpdateCoords("springs");
+if (isset($_GET['debug']))
+{
+    dprint_r(__FILE__."  ".__LINE__." : ".FN_GetExecuteTimer());
+}
+$stamp=openkis_MapCacheStamp($tablename);
+$results=$dbview->GetResults(false,$params,$idresult);
+$results = openkis_FilterPublicRecords($openkis_access, $config, $results);
+if (isset($_GET['debug']))
+{
+    dprint_r("idresult:$idresult");
 }
 //evita di ricalcolare tutto se non è cambiato niente nel db o in questo file--<
 $tplstring=file_get_contents("openkis_kml.tp.xml");
@@ -164,12 +162,11 @@ foreach($results as $item)
         {
             if ($item['photo1'])
             {
-                $img=$table->getThumbPath($item,"photo1");
-                if (file_exists($img))
+                $img=$table->getFileUrl($item,"photo1",true);
+                if ($img)
                 {
-                    $img=$_FN['siteurl'].$img;
+                    $description.="<img style=\"height:100px;\" src=\"$img\" /><br />";
                 }
-                $description.="<img style=\"height:100px;\" src=\"$img\" /><br />";
             }
             $description.="$elevation_txt $lenght_total_txt $depth_total_txt<br />";
             $description.="<div class=\"text-right\"><a  onclick=\"try{window.open(this.href,'r','scrollbars=yes').focus();return false;}catch(e){return true;}\" target=\"_blank\"  href=\"$url\" ><span class=\"glyphicon glyphicon-eye-open\"></span> <b>".FN_Translate("open")."</b></a> <a target=\"_blank\" href='https://www.google.it/maps/dir//$lat_,$lon_/@$lat_,$lon_,18z' ><span class=\"glyphicon glyphicon-road\"></span> <b>".FN_Translate("go to")."</b></a></div>";
@@ -183,8 +180,9 @@ foreach($results as $item)
             }
             if ($item['photo1'])
             {
-                $img=$_FN['siteurl'].$table->getThumbPath($item,"photo1");
-                $description.="<img style=\"height:100px;\" src=\"$img\" /><br />";
+                $img=$table->getFileUrl($item,"photo1",true);
+                if ($img)
+                    $description.="<img style=\"height:100px;\" src=\"$img\" /><br />";
             }
             $description.="$elevation_txt $lenght_total_txt $depth_total_txt<br />";
             $description.="<div class=\"text-right\"><a  onclick=\"try{window.open(this.href,'r','scrollbars=yes').focus();return false;}catch(e){return true;}\" target=\"_blank\"  href=\"$url\" ><span class=\"glyphicon glyphicon-eye-open\"></span> <b>".FN_Translate("open")."</b></a> <a target=\"_blank\" href='https://www.google.it/maps/dir//$lat_,$lon_/@$lat_,$lon_,18z' ><span class=\"glyphicon glyphicon-road\"></span> <b>".FN_Translate("go to")."</b></a></div>";
@@ -236,17 +234,14 @@ if (isset($_GET['debug']))
     dprint_r(__FILE__." ".__LINE__." : post tpl ".FN_GetExecuteTimer());
 }
 $str=FN_FixNewline($str);
-if ("$idresult")
+if ($_FN['enable_compress_gzip'])
 {
-    if ($_FN['enable_compress_gzip'])
-    {
-        $str=gzencode($str);
-    }
-    FN_SetGlobalVarValue("$idcache",$str);
-    if (isset($_GET['debug']))
-    {
-        dprint_r(__FILE__." ".__LINE__." : FN_SetGlobalVarValue  ".FN_GetExecuteTimer());
-    }
+    $str=gzencode($str);
+}
+openkis_MapCacheSet($idcache,$stamp,$str);
+if (isset($_GET['debug']))
+{
+    dprint_r(__FILE__." ".__LINE__." : openkis_MapCacheSet  ".FN_GetExecuteTimer());
 }
 
 

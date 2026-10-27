@@ -9,10 +9,8 @@ global $_FN; //variabile globale condivisa da tutto il programma Flatnux
 //dati appena inseriti:
 $_FN['modparams']["caves"]['editorparams']['table']['function_on_insert']="GeneraNumero";
 $_FN['modparams']["artificials"]['editorparams']['table']['function_on_insert']="GeneraNumeroArtificials";
-$config=FN_LoadConfig("extra/openkis/config.php");
-$_FN['default_latitude']=$config['default_latitude'];
-$_FN['default_longitude']=$config['default_longitude'];
-$_FN['default_zoom']=$config['default_zoom'];
+// map centred on the region (unless changed in the admin section "configopenkis")
+openkis_SetRegionMapCenter(43.35, 13.10, 9);
 
 /**
  * 
@@ -40,7 +38,7 @@ function GeneraNumeroArtificials($values)
         $tmp=explode(".",$grotta['code']);
         $tmp=$tmp[0];
 //prendo solo il numero
-        $numero=intval(str_replace("MA",""));
+        $numero=intval(str_replace("MA","",$tmp));
         $grotte_by_code[$numero]['num']=$numero;
         if ($numero > $max)
         {
@@ -92,7 +90,7 @@ function GeneraNumero($values)
         $tmp=explode(".",$grotta['code']);
         $tmp=$tmp[0];
 //prendo solo il numero
-        $numero=intval(str_replace("MA",""));
+        $numero=intval(str_replace("MA","",$tmp));
         $grotte_by_code[$numero]['num']=$numero;
         if ($numero > $max)
         {
@@ -121,19 +119,13 @@ function GeneraNumero($values)
 }
 
 /**
- * 
+ * Country and region pre-filled in the insert forms, set only on the pages of
+ * these sections (see openkis_SetInsertDefaults(), #30).
  */
 function InizializzaDB()
 {
-    $TableFRM=FN_XMDBForm("ctl_caves");
-    $TableFRM->formvals['country']['frm_default']="ITALIA";
-    $TableFRM->formvals['regione']['frm_default']="MARCHE";
-    $TableFRM1=FN_XMDBForm("ctl_artificials");
-    $TableFRM1->formvals['country']['frm_default']="ITALIA";
-    $TableFRM1->formvals['regione']['frm_default']="MARCHE";
-    $TableFRM2=FN_XMDBForm("ctl_springs");
-    $TableFRM2->formvals['country']['frm_default']="ITALIA";
-    $TableFRM2->formvals['regione']['frm_default']="MARCHE";
+    openkis_SetInsertDefaults(array("caves" => "ctl_caves", "artificials" => "ctl_artificials", "springs" => "ctl_springs"),
+        array("country" => "ITALIA", "regione" => "MARCHE"));
 }
 
 InizializzaDB();

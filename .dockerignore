@@ -1,0 +1,14 @@
+.git
+misc
+deploy/.env
+deploy/backups
+# No database dump may end up in the image: only the two SQL files the
+# image needs are let through (deploy/smoke-test.sh checks the built image too)
+**/*.sql
+**/*.sql.*
+**/*.dump
+**/*.dump.*
+!sql/openkis_indexes.sql
+!extra/openkis/install/demo_cave.sql
+# regional database updates applied by the entrypoint (settings, no data dumps)
+!extra/openkis/custom/*/updates/*.sql

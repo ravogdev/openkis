@@ -11,7 +11,7 @@ foreach($caves as $key=> $val)
 {
     if ($val!= "")
     {
-        $r=$table->GetRecord(array("code"=>$val));
+        $r=XMETAFKLookup::GetRecord($table,"code",$val,"id,name,synonyms");
         if (isset($r['name']))
         {
             $l=FN_RewriteLink("index.php?mod=caves&op=view&id={$r['id']}");
@@ -32,7 +32,7 @@ foreach($grotte as $key=> $val)
 {
     if ($val!= "")
     {
-        $r=$table->GetRecord(array("id"=>$val));
+        $r=XMETAFKLookup::GetRecord($table,"id",$val,"id,name,synonyms");
         if (isset($r['name']))
         {
 
@@ -57,6 +57,8 @@ $fhtml="";
 foreach($fauna as $key=> $val)
 {
     $val=trim(ltrim(str_replace("\n","",str_replace("\r","",$val))));
+    // the value is interpolated in the query: keep only the characters of a scientific name
+    $val=preg_replace('/[^\p{L}\p{N} .\-]/u',"",$val);
     if ($val!= "")
     {
         $query="SELECT * FROM ctl_fauna WHERE scientific_name LIKE \"%".$val."%\" OR scientific_name LIKE \"%".strtolower($val)."%\" OR scientific_name LIKE \"%".ucfirst(strtolower($val))."%\" OR scientific_name LIKE \"%".strtoupper($val)."%\" ";

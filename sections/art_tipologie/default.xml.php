@@ -23,3 +23,7 @@
 	<title_en></title_en>
 	<description_en></description_en>
 </fn_sections>
+
+<fncf_table_editor>
+	<tablename>ctl_art_types</tablename>
+</fncf_table_editor>

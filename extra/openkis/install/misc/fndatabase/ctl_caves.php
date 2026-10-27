@@ -158,6 +158,18 @@
         <frm_size>8</frm_size>
     </field>
     <field>
+        <name>lenght_scope</name>
+        <frm_it>Sviluppo riferito a</frm_it>
+        <frm_en>Development refers to</frm_en>
+        <type>radio</type>
+        <frm_options>total,partial</frm_options>
+        <frm_options_it>complessivo (intera grotta),parziale (solo questo ingresso)</frm_options_it>
+        <frm_options_en>whole cave,this entrance only</frm_options_en>
+        <frm_default>total</frm_default>
+        <frm_help_it>Indica se sviluppo e dislivelli della scheda si riferiscono all'intera grotta (complessivo) o solo al ramo di questo ingresso (parziale). Parziale con sviluppo vuoto = ingresso che non aggiunge sviluppo proprio. Le schede storiche non ancora classificate restano vuote.</frm_help_it>
+        <frm_help_en>States whether development and depth refer to the whole cave (total) or only to the branch of this entrance (partial). Partial with empty development = entrance adding no development of its own. Unclassified historic records stay empty.</frm_help_en>
+    </field>
+    <field>
         <name>depth_positive</name>
         <type>string</type>
         <frm_type>os_lenght</frm_type>
@@ -286,7 +298,7 @@
     </field>
     <field> 
         <name>lake</name>
-        <frm_it>Cavit&agrave;lacustre</frm_it>
+        <frm_it>Cavit&agrave; lacustre</frm_it>
         <type>radio</type>
         <frm_options>S,N</frm_options>
         <frm_options_it>Si,No</frm_options_it>
@@ -507,7 +519,9 @@
     <field>
         <name>import_rawdata</name>
         <frm_it>Dati pre importazione</frm_it>
-        <type>text</type>        
+        <type>text</type>
+        <frm_show>0</frm_show>
+        <view_show>1</view_show>
     </field>
     <field>
         <name>recordinsert</name>
@@ -543,6 +557,20 @@
         <view_endgroup>data</view_endgroup>
     </field>    
     <field>
+        <name>public_map</name>
+        <frm_i18n>shown on the public map</frm_i18n>
+        <frm_it>Visibile sulla mappa pubblica</frm_it>
+        <frm_en>Shown on the public map</frm_en>
+        <type>radio</type>
+        <frm_options>Y,N</frm_options>
+        <frm_options_it>Si,No</frm_options_it>
+        <frm_options_en>Yes,No</frm_options_en>
+        <defaultvalue>Y</defaultvalue>
+        <frm_default>Y</frm_default>
+        <frm_help_it>Se No, la grotta non compare sulla mappa pubblica né nei suoi export per chi non ha accesso al catasto riservato.</frm_help_it>
+        <frm_help_en>If No, the cave does not appear on the public map and its exports for users without access to the reserved register.</frm_help_en>
+    </field>
+    <field>
         <name>groupview</name>
         <frm_i18n>limits the display of the content in these groups</frm_i18n>
         <foreignkey>fn_groups</foreignkey>
@@ -565,12 +593,12 @@
     
     <field>
         <name>latitude</name>
-        <type>float</type>
+        <type>double</type>
         <frm_show>0</frm_show>
     </field>
     <field>
         <name>longitude</name>
-        <type>float</type>
+        <type>double</type>
         <frm_show>0</frm_show>
     </field>  
     <field>

@@ -294,10 +294,10 @@
         <frm_help>Gruppi o persone che hanno effettuato attivit&agrave; rilevanti o esplorative sulla cacit&agrave;</frm_help>
         <frm_i18n>associations</frm_i18n>
         <type>string</type>
-        <frm_type>multicave</frm_type>
+        <frm_type>multiselect</frm_type>
         <foreignkey>ctl_associations</foreignkey>
-        <fk_link_field>code</fk_link_field>
-        <fk_show_field>name</fk_show_field>
+        <fk_link_field>name</fk_link_field>
+        <fk_show_field>acronym,name</fk_show_field>
     </field>
     <field>
         <name>chronology</name>
@@ -512,12 +512,12 @@
     
     <field>
         <name>latitude</name>
-        <type>float</type>
+        <type>double</type>
         <frm_show>0</frm_show>
     </field>
     <field>
         <name>longitude</name>
-        <type>float</type>
+        <type>double</type>
         <frm_show>0</frm_show>
     </field>  
     <field>

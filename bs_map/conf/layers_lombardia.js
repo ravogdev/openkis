@@ -1,6 +1,14 @@
 OPS_Map.MyAddLayers = function ()
 {
 
+    // Lontra 3-5-2024
+    //addWMSLayer: function (title, url, layername, isBaselayer, visible, format, projecton, attributions)
+    // CTR_DBT is the first base layer, so the map opens on it (?basemap=Topo picks another).
+    // The WMS endpoint of the service, asked in Web Mercator like the map (no reprojection):
+    // the .../rest/... address used before is the ArcGIS REST page and answers HTML to WMS requests.
+    // Drawn only inside Lombardia and from about zoom 8 (the service's minimum scale 1:3,000,000).
+    OPS_Map.addWMSLayer("CTR_DBT-Regione Lombardia", "https://www.cartografia.servizirl.it/arcgis2/services/BaseMap/CTR_DBT/MapServer/WMSServer", "0", true, true, "image/jpeg", 'EPSG:3857', "© Regione Lombardia");
+
     OPS_Map.addOSMLayer("Topo", 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', true, false, null, 17);
 
     OPS_Map.addOSMLayer("Satellite", "https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=" + API_KEYS.MAPTILER, true, false);
@@ -8,10 +16,6 @@ OPS_Map.MyAddLayers = function ()
 
     OPS_Map.addOSMLayer("OSM Landscape", "https://a.tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=" + API_KEYS.THUNDERFOREST, true, false);
 
-    // Lontra 3-5-2024
-    //addWMSLayer: function (title, url, layername, isBaselayer, visible, format, projecton, attributions)
-    OPS_Map.addWMSLayer("CTR_DBT-Regione Lombardia","https://www.cartografia.servizirl.it/arcgis2/rest/services/BaseMap/CTR_DBT/MapServer","0",true,true,"png", 'EPSG:32632',"aaa");
-    
     OPS_Map.addWMSLayer("IGM 1:25000 Piemonte", "openkis_proxy.php/http://sgi2.isprambiente.it/arcgis/services/raster/igm25k_piemonte_wgs/ImageServer/WMSServer", 'igm25k_piemonte_wgs', false, false, "png", 'EPSG:4326');
 
     //OPS_Map.addWMSLayer("IGM 1:25000 Liguria", "openkis_proxy.php/http://sgi2.isprambiente.it/arcgis/services/raster/igm25k_liguria_wgs/ImageServer/WMSServer", 'igm25k_piemonte_wgs', false, false, "png", 'EPSG:4326');

@@ -22,14 +22,14 @@ function pdf_get_cave_data($id)
     $tablerilievi = FN_XMDBTable("ctl_surveys");
     $rilievi = $tablerilievi->GetRecords(array("codecave" => $record['code']));
 
-    // Bibliografia: usa FNDBVIEW con la stessa query LIKE del viewfooter
+    // Bibliografia: usa FNDBVIEW con lo stesso filtro del viewfooter (tabella di collegamento, #20)
     $bibliografia = array();
-    $bibconfig = FN_LoadConfig("", "bibliography");
+    $bibfilter = openkis_BibliographyFilter($record['code'], "codecaves");
+    $bibconfig = $bibfilter !== false ? FN_LoadConfig("", "bibliography") : false;
     if ($bibconfig) {
         $bibview = new FNDBVIEW($bibconfig);
         $bibparams = array();
-        $code = $record['code'];
-        $bibparams['appendquery'] = "codecaves LIKE '{$code}' OR codecaves LIKE '{$code},%' OR codecaves LIKE '%,{$code},%' OR codecaves LIKE '%,{$code}' ";
+        $bibparams['appendquery'] = $bibfilter;
         $bibparams['fields'] = "id,title,authors,year";
         $bibliografia = $bibview->GetResults(false, $bibparams);
         if (is_array($bibliografia)) {
@@ -247,7 +247,7 @@ function get_html_pdf($id)
         $html .= '<script>document.addEventListener("DOMContentLoaded", function() {
             var map = L.map("map").setView([' . $data['lat'] . ', ' . $data['lon'] . '], ' . ($data['isIGM'] ? '13' : '15') . ');';
         if ($data['isIGM']) {
-            $html .= 'L.tileLayer("https://cartodb-basemaps-a.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png",{maxZoom:18,attribution:"CartoDB"}).addTo(map);
+            $html .= 'L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",{maxZoom:18,maxNativeZoom:16,attribution:"Esri"}).addTo(map);
             L.tileLayer.wms("https://sgi2.isprambiente.it/arcgis/services/raster/igm25k_liguria_wgs/ImageServer/WMSServer",{layers:"igm25k_liguria_wgs",format:"image/png",transparent:true,version:"1.1.1",attribution:"IGM 1:25000 Liguria"}).addTo(map);';
         } else {
             $html .= 'L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{maxZoom:17,attribution:"OpenTopoMap"}).addTo(map);';

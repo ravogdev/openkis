@@ -47,7 +47,7 @@ else
         echo "</div>";
     }
 
-$table=new XMLTable("fndatabase","ctl_fauna",$_FN['datadir']);
+$table=FN_XMDBTable("ctl_fauna");
 $fauna=explode("|",$row['fauna']);
 
 $fauna=array_unique($fauna);
@@ -58,10 +58,12 @@ $fhtml="";
 foreach($fauna as $key=> $val)
 {
     $val=trim(ltrim(str_replace("\n","",str_replace("\r","",$val))));
+    // the value is interpolated in the query: keep only the characters of a scientific name
+    $val=preg_replace('/[^\p{L}\p{N} .\-]/u',"",$val);
     if ($val!= "")
     {
         $query="SELECT * FROM ctl_fauna WHERE scientific_name LIKE \"%".$val."%\" OR scientific_name LIKE \"%".strtolower($val)."%\" OR scientific_name LIKE \"%".ucfirst(strtolower($val))."%\" OR scientific_name LIKE \"%".strtoupper($val)."%\" ";
-        $r=FN_XMLQuery($query);
+        $r=FN_XMETADBQuery($query);
         if (isset($r[0]['scientific_name']))
         {
             $l=fn_rewritelink("index.php?mod=fauna&op=view&id={$r[0]['id']}");

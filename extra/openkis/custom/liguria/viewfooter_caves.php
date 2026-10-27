@@ -30,22 +30,28 @@ if (!empty($row['latitude']))
     echo "</div><br />";
 
 
-    $position=openkis_GetItemPosition($row);
-    echo "<div>Coordinate  WGS84 (Lon,Lat):<input class=\"form-input\" value=\"{$row['longitude']},{$row['latitude']}\" onclick=\"this.select();\" /></div>";
-    
-    echo "<div>Coordinate  WGS84 (Lon,Lat):<input class=\"form-input\" value=\"{$position['lon_dms']},{$position['lat_dms']}\" onclick=\"this.select();\" /></div>";
-   
-    echo "<div>Coordinate  WGS84 UTM (x,y,zone):<input class=\"form-input\" value=\"{$position['x']},{$position['y']},{$position['zone']}\" onclick=\"this.select();\" /></div>";
-    
-    
-    
+    $position = openkis_GetItemPosition($row);
+    // Coordinates card: decimal degrees, sexagesimal (DMS) and UTM, click-to-select
+    echo "<div class=\"card mb-3\">";
+    echo "<div class=\"card-header\"><h5 class=\"mb-0\">Coordinate WGS84</h5></div>";
+    echo "<div class=\"card-body\">";
+    echo "<div class=\"row mb-2\"><label class=\"col-sm-4 col-form-label\">Gradi decimali (Lon, Lat)</label><div class=\"col-sm-8\"><input class=\"form-control\" readonly value=\"{$row['longitude']},{$row['latitude']}\" onclick=\"this.select();\" /></div></div>";
+    echo "<div class=\"row mb-2\"><label class=\"col-sm-4 col-form-label\">Gradi sessagesimali (Lon, Lat)</label><div class=\"col-sm-8\"><input class=\"form-control\" readonly value=\"{$position['lon_dms']},{$position['lat_dms']}\" onclick=\"this.select();\" /></div></div>";
+    echo "<div class=\"row\"><label class=\"col-sm-4 col-form-label\">UTM (X, Y, fuso)</label><div class=\"col-sm-8\"><input class=\"form-control\" readonly value=\"{$position['x']},{$position['y']},{$position['zone']}\" onclick=\"this.select();\" /></div></div>";
+    echo "</div></div>";
 }
-$config = FN_LoadConfig("", "bibliography");
-$biblio = new FNDBVIEW($config);
-$params['appendquery'] = "codecaves LIKE '{$row['code']}' OR codecaves LIKE '{$row['code']},%' OR codecaves LIKE '%,{$row['code']},%' OR codecaves LIKE '%,{$row['code']}' ";
-$params['fields'] = "id,title,authors,year";
-$biblio_items = $biblio->GetResults(false, $params);
-$biblio_items = FN_ArraySortByKey($biblio_items, "year");
+// items linked to this code, through the bibliography link table (#20)
+$biblio_items = array();
+$biblio_filter = openkis_BibliographyFilter($row['code'], "codecaves");
+if ($biblio_filter !== false)
+{
+    $config = FN_LoadConfig("", "bibliography");
+    $biblio = new FNDBVIEW($config);
+    $params['appendquery'] = $biblio_filter;
+    $params['fields'] = "id,title,authors,year";
+    $biblio_items = $biblio->GetResults(false, $params);
+    $biblio_items = FN_ArraySortByKey($biblio_items, "year");
+}
 if (is_array($biblio_items) && count($biblio_items))
 {
     echo "<div class=\"alert alert-warning\">";
@@ -63,7 +69,7 @@ if (is_array($biblio_items) && count($biblio_items))
 $config = FN_LoadConfig("", "survey");
 $survey = new FNDBVIEW($config);
 $params['appendquery'] = "codecave LIKE '{$row['code']}'";
-$params['fields'] = "id,name,filelox,priority";
+$params['fields'] = "id,name,filelox,filelas,priority";
 
 $items = array();
 
@@ -71,16 +77,47 @@ $items = $survey->GetResults($config, $params);
 if (is_array($items) && count($items))
 {
     $items = FN_ArraySortByKey($items, "priority");
+    $html3d = "";
+    $htmllas = "";
+    $count3d = 0;
     foreach ($items as $survey_item)
     {
-        if (!empty($survey_item['filelox']) && file_exists("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelox/{$survey_item['filelox']}"))
+        // LAS point cloud: embedded viewer, same as artificial cavities
+        if (!empty($survey_item['filelas']) && file_exists("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelas/{$survey_item['filelas']}") && openkis_FileAccess("ctl_surveys", $survey_item['id'], "filelas"))
         {
-            $file = urlencode("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelox/{$survey_item['filelox']}");
-            $iframe_href = "{$_FN['siteurl']}openkis_cave_viewer.php?f={$file}";
-//            echo "<iframe style=\"width:100%;height:800px;border:0px\" src=\"$iframe_href\"></iframe>";
- //           dprint_r($survey_item);
-            echo "<br/>{$survey_item['name']}: <a class=\"btn btn-primary\" href=\"$iframe_href\" target=\"_blank\">" . FN_Translate("3D Viewer") . "</a><br />";
+            $lasurl = "{$_FN['siteurl']}" . openkis_CaveViewerFile("ctl_surveys", $survey_item['id'], "filelas", $survey_item['filelas']);
+            $las_href = "{$_FN['siteurl']}lasviewer/viewer.html?url=" . urlencode($lasurl);
+            $htmllas .= "<h5>" . FN_Translate("3D Viewer") . ": " . htmlspecialchars($survey_item['name']) . "</h5>";
+            $htmllas .= "<a class=\"btn btn-primary m-1\" href=\"$lasurl\" target=\"_blank\">" . FN_Translate("download") . " 3D</a>";
+            $htmllas .= "<a class=\"btn btn-primary m-1\" href=\"$las_href\" target=\"_blank\">" . FN_Translate("open") . " 3D</a>";
+            $htmllas .= "<iframe style=\"width:100%;height:800px;border:0px\" src=\"$las_href\" allowfullscreen allow=\"fullscreen\"></iframe>";
         }
+        if (!empty($survey_item['filelox']) && file_exists("misc/fndatabase/ctl_surveys/{$survey_item['id']}/filelox/{$survey_item['filelox']}") && openkis_FileAccess("ctl_surveys", $survey_item['id'], "filelox"))
+        {
+            $count3d++;
+            $file = urlencode(openkis_CaveViewerFile("ctl_surveys", $survey_item['id'], "filelox", $survey_item['filelox']));
+            $iframe_href = "{$_FN['siteurl']}openkis_cave_viewer.php?f={$file}";
+            // Use the survey name as button label, fall back to a numbered generic label
+            $title3d = trim((string) $survey_item['name']);
+            if ($title3d === "")
+            {
+                $title3d = "Modello 3D" . ($count3d > 1 ? " $count3d" : "");
+            }
+            $html3d .= "<a class=\"btn btn-primary m-1\" href=\"$iframe_href\" target=\"_blank\">&#10696; " . htmlspecialchars($title3d) . "</a>";
+        }
+    }
+    if ($html3d !== "")
+    {
+        echo "<div class=\"alert alert-secondary\">";
+        echo "<h5>" . FN_Translate("3D Viewer") . ":</h5>";
+        echo $html3d;
+        echo "</div>";
+    }
+    if ($htmllas !== "")
+    {
+        echo "<div class=\"alert alert-secondary\">";
+        echo $htmllas;
+        echo "</div>";
     }
 }
 
@@ -93,13 +130,35 @@ function DrawFile($file)
     $color[1] = "#eaeaea";
     $color2[0] = "#f3e49c";
     $color2[1] = "#f3e4c8";
-    $icon = $_FN['siteurl'] . "images/mime/pdf.png";
-    $tit = basename($file);
-    $l2 = $_FN['siteurl'] . "ops_getfile.php?f=$file";
+    $tit = htmlspecialchars(basename($file));
+    // the path may contain spaces and special characters: encode it in the URL
+    $fileurl = str_replace("%2F", "/", rawurlencode($file));
+    $l2 = $_FN['siteurl'] . "ops_getfile.php?f=$fileurl";
     $ext = strtolower(FN_GetFileExtension($file));
+    switch ($ext)
+    {
+        case "pdf":
+            $icon = $_FN['siteurl'] . "images/mime/pdf.png";
+            break;
+        case "doc":
+        case "docx":
+        case "odt":
+        case "rtf":
+            $icon = $_FN['siteurl'] . "images/mime/doc.png";
+            break;
+        case "txt":
+        case "csv":
+        case "tro":
+        case "th":
+        case "svx":
+            $icon = $_FN['siteurl'] . "images/mime/text.png";
+            break;
+        default:
+            $icon = $_FN['siteurl'] . "images/mime/unknown.png";
+    }
     if ($ext == "jpg" || $ext == "jpeg" || $ext == "png")
     {
-        $icon = "{$_FN['siteurl']}/thumb.php?f=$file&amp;h=300&amp;w=300";
+        $icon = "{$_FN['siteurl']}thumb.php?f=$fileurl&amp;h=300&amp;w=300";
     }
     echo "\n<div class=\"card col-12  col-xs-12 col-sm-3 col-lg-2\"  >";
     echo "<a class=\"\" target=\"_blank\" href=\"$l2\"><img class=\"card-img-top\" src='$icon' alt=\"\" /></a>";
@@ -259,8 +318,11 @@ if (!empty($_GET['export_pdf']))
 }
 $urlexport = FN_RewriteLink("index.php?mod={$_FN['mod']}&op=view&id={$row['id']}&export_pdf=1");
 $urlexportpdf = FN_RewriteLink("index.php?mod={$_FN['mod']}&op=view&id={$row['id']}&export_pdf=1&format=pdf");
-echo "<br/><a class=\"btn btn-primary\" href=\"$urlexport\" target=\"_blank\">" . FN_Translate("Genera scheda catastale") . "</a>";
-echo " <a class=\"btn btn-secondary\" href=\"$urlexportpdf\" target=\"_blank\">Scarica PDF</a><br />";
+echo "<div class=\"alert alert-info\">";
+echo "<h5>Scheda catastale:</h5>";
+echo "<a class=\"btn btn-primary m-1\" href=\"$urlexport\" target=\"_blank\">" . FN_Translate("Genera scheda catastale") . "</a>";
+echo "<a class=\"btn btn-secondary m-1\" href=\"$urlexportpdf\" target=\"_blank\">Scarica PDF</a>";
+echo "</div>";
 
 //------------------generazione scheda catastale------------------------<
 

@@ -3,6 +3,38 @@
 global $_FN;
 $vars = array();
 
+// The stats and top lists below read every cave, so the whole block is cached
+// until ctl_caves or ctl_wishregioni change (the same marker as the map cache,
+// openkis_MapCacheStamp()), this file changes, or it is older than
+// $_FN['openkis_map_cache_maxage'] seconds (default 3600, 0 = no cache).
+// Control center -> Utilities -> Refresh map data and "php refresh-cache.php"
+// clear it.
+$home_cache_maxage = isset($_FN['openkis_map_cache_maxage']) ? intval($_FN['openkis_map_cache_maxage']) : 3600;
+$home_cache_key = "openkis_home_" . filemtime(__FILE__) . "_" . md5(serialize(array($_FN['mod'], $_FN['lang'], $_FN['siteurl'])));
+$home_cache_time = time();
+$home_cache_stamp = 0;
+foreach (array("ctl_caves", "ctl_wishregioni") as $home_cache_table)
+{
+    if (function_exists('openkis_MapCacheStamp') && FN_XMDBTable($home_cache_table))
+    {
+        $home_cache_stamp = max($home_cache_stamp, openkis_MapCacheStamp($home_cache_table));
+    }
+}
+if ($home_cache_maxage > 0 && $home_cache_stamp > 0)
+{
+    $home_cache = FN_GetGlobalVarValue($home_cache_key);
+    // a block built in the same second as the last change may have missed it
+    // (the stamps have a one second resolution): it is rebuilt
+    if (is_array($home_cache) && isset($home_cache['stamp'], $home_cache['time'], $home_cache['vars'])
+        && $home_cache['stamp'] == $home_cache_stamp && $home_cache['stamp'] < $home_cache['time']
+        && $home_cache_time - $home_cache['time'] <= $home_cache_maxage)
+    {
+        $vars = $home_cache['vars'];
+        $SECTION = &$vars;
+        return;
+    }
+}
+
 
 
 // Recupera tutte le regioni dalla tabella "ctl_wishregioni"
@@ -19,7 +51,7 @@ foreach ($regioni as $k => $v)
     $regioni[$k]['urlimg'] = false;
     if (!empty($v['photo1']))
     {
-        $regioni[$k]['urlimg'] = $table_regioni->getFilePath($v, "photo1");
+        $regioni[$k]['urlimg'] = $table_regioni->getFileUrl($v, "photo1", true);
     }
 }
 $vars['regioni'] = $regioni;
@@ -118,7 +150,7 @@ foreach ($regioni as $k => $v)
     $regioni[$k]['urlimg'] = false;
     if (!empty($v['photo1']))
     {
-        $regioni[$k]['urlimg'] = $table_regioni->getFilePath($v, "photo1");
+        $regioni[$k]['urlimg'] = $table_regioni->getFileUrl($v, "photo1", true);
     }
 }
 $vars['regioni'] = $regioni;
@@ -197,6 +229,11 @@ if (isset($mappa_regioni_stato['Piemonte'])) {
 
 $vars['mappa_regioni_stato'] = $mappa_regioni_stato;
 $vars['mappa_regioni_stato_json'] = json_encode($mappa_regioni_stato);
+
+if ($home_cache_maxage > 0 && $home_cache_stamp > 0)
+{
+    FN_SetGlobalVarValue($home_cache_key, array('stamp' => $home_cache_stamp, 'time' => $home_cache_time, 'vars' => $vars));
+}
 
 // $SECTION contiene il dizionario che il sistema passa a section.it.html
 $SECTION=&$vars;
