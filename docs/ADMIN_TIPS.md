@@ -43,6 +43,18 @@ Things the application does on its own, limits that can surprise you, and the ri
 - **Satellite and OSM Landscape need API keys** (`MAPTILER_API_KEY`, `THUNDERFOREST_API_KEY` in `.env`, then restart the web container). Without them those two layers stay blank.
 - **Table structure is cached for up to 10 minutes.** After adding or changing a column by hand, use "Clear cache" or restart the web container, so the change is seen at once.
 
+## Cave systems
+
+- **"Development refers to" on the cave form.** Each cave record can say whether its development (and depth) refers to the whole cave ("whole cave") or only to the branch of this entrance ("this entrance only"). On Lombardia the field starts empty, on new records too: curators set it when a cave belongs to a cave system. Other regions start new records at "whole cave". Existing records stay empty until someone sets the value.
+- **The development of a cave system is recalculated when a cave or a cave system is saved** through OpenKIS (web forms or the MCP server). The value becomes the largest development among the member caves set to "whole cave". If no member is set to "whole cave", it is the sum of the members set to "this entrance only", where an empty development counts as 0. Members with an empty value are ignored. A system whose members are all still empty keeps its stored value. The members are the codes in the system's cave list, matched exactly (spaces around the commas are ignored).
+- **The depth of a cave system is never recalculated.** It is always the value entered on the system.
+- **Switching it off for one system.** Set **Automatic development recalculation** = No on the cave system, for example after a junction that the member records don't show yet. The development entered by hand is then kept. An empty value counts as Yes.
+- **Opening a cave-system page no longer overwrites its length and depth.** Before this change, every view, including an anonymous one, replaced them with the sum of the members' developments, which counted the same passages several times. The page now shows the stored values. When they differ, it also shows in grey the sum of the members' developments and the depth worked out from the entrance elevations.
+- **The recalculation is silent.** It doesn't change the system's "last update" or its history. It runs only when the caves or the cave systems have changed since the last run (a time stamp in `misc/_cache/openkis_UpdateCaveSystems.time`). After editing caves or systems directly in the database, run **Control center > Utilities > Refresh map data**, which also recalculates the systems.
+- **Lombardia: the old figures are kept.** The old site kept the development and depth of the 10 cave systems only in the legacy columns `SVILRE` and `DTOT`. The database update copies them into the fields the pages use, where those are empty. A curator who sets a member cave to "whole cave" replaces the stored development with that cave's development. Set the system to No first when the stored figure must stay.
+- **Once chosen, "Development refers to" can't be emptied in the form**, only changed to the other value. An empty value is possible only through the database.
+- **Saving a cave system needs a Code.** The migrated Lombardia systems have none, so the edit form refuses to save until one is entered.
+
 ## Regional sites
 
 - **Country and region pre-filled in the insert forms.** On the italia, marche, liguria and umbria sites the "new cave" form (and, except on liguria, the "new artificial cavity" and "new spring" forms) starts with country ITALIA and the site's region. The italia site, being national, pre-fills no region: the curator picks it (it used to pre-fill MARCHE by mistake). The values are only a starting point in the form; records saved from the API or an import get no default.
@@ -50,6 +62,7 @@ Things the application does on its own, limits that can surprise you, and the ri
 ## Database schema changes
 
 - **Missing columns are added automatically.** When a table definition gains a field, OpenKIS adds the column on the first page that opens that table. On large tables, that page is slow once. For big imports, run the migration SQL first, before the web container starts.
+- **Fields added to the shipped definitions reach existing sites.** OpenKIS never replaces a table definition already in `misc/fndatabase`, but it adds to it the few fields that were added to the code later (now `lenght_scope` in `ctl_caves` and `ctl_caves_versions`, and `lenght_auto` in `ctl_cavesystems`), once, at the first request after the update. Fields edited by hand in those files are kept.
 
 ## Updates and the Docker image
 
