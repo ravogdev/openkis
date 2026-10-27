@@ -24,7 +24,9 @@ Lombardia checks run with `lombardia`):
   `Regional-Test-2026`;
 - for a desktop and an Android browser and for anonymous and each role: home,
   caves, surveys, cave systems, caves map, a cave sheet, the control center,
-  the JSON and KML exports. HTTP status, PHP errors, still logged in, and the
+  the JSON and KML exports; the map access script (`openkis_map_access.js.php`)
+  agrees with the KML export for caves, springs and artificial cavities: a
+  section the map loads answers 200, one it skips answers 403 (#99). HTTP status, PHP errors, still logged in, and the
   "no permission" page exactly where the database says so (`fn_sections`,
   `fncf_<section>`: the same rules as the code);
 - a cave inserted by each role is saved only for the roles that may insert;
