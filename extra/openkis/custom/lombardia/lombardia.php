@@ -7,11 +7,29 @@ global $_FN; //variabile globale condivisa da tutto il programma Flatnux
 //questa riga di codiceassegna la funzione da richiamare dopo 
 //l'inserimento di una grotta, la funzione riceve come parametro un array con i 
 //dati appena inseriti:
-$_FN['modparams']["caves"]['editorparams']['table']['function_on_insert']="GeneraNumero";
+$_FN['modparams']["caves"]['editorparams']['table']['function_on_insert']="cglombardia_OnInsertCave";
 $_FN['modparams']["artificials"]['editorparams']['table']['function_on_insert']="GeneraNumeroArtificials";
 // map centred on the region (unless changed in the admin section "configopenkis")
 openkis_SetRegionMapCenter(45.62, 9.75, 8);
 
+
+/**
+ * function_on_insert of the caves section: assigns the cave number
+ * (GeneraNumero) and then recomputes the cave systems, as the generic hook
+ * registered in extra/openkis.inc.php would (this assignment replaces it).
+ *
+ * @param array $values the inserted record
+ * @return array
+ */
+function cglombardia_OnInsertCave($values)
+{
+    $values = GeneraNumero($values);
+    if (function_exists("openkis_OnSaveUpdateCaveSystems"))
+    {
+        openkis_OnSaveUpdateCaveSystems($values);
+    }
+    return $values;
+}
 
 /**
  * Assigns the first free number to a new artificial cavity: CALO1, CALO2, ...
