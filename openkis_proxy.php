@@ -24,9 +24,19 @@ else
 }
 while(false!== @ob_end_clean()
 );
-if (isset($contents['content_type']))
+if ($contents['errno'] || empty($contents['http_code']))
 {
-    header("content_type:{$contents['content_type']}");
+    // no answer (timeout, DNS, refused): an error, not an empty "200" page
+    http_response_code(502);
+    header("Access-Control-Allow-Origin: *");
+    die();
+}
+// the upstream status, so a map server's 503 isn't passed on as 200
+http_response_code($contents['http_code']);
+if (!empty($contents['content_type']))
+{
+    // the upstream type (image/png for map tiles), not PHP's default text/html
+    header("Content-Type: {$contents['content_type']}");
 }
 if ($is_gzip)
 {
@@ -59,26 +69,24 @@ function getWebPage($url)
         CURLOPT_MAXREDIRS=>10,// fermati dopo il decimo redirect
     );
 
-    $port = explode(":",$url);
-    if (!empty($port[2]))
-    {
-        $p2=explode("/",$port[2]);
-        $url2=str_replace(":{$p2[0]}/","/",$url);
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_PORT, $p2[0]);
-        curl_setopt($ch, CURLOPT_URL,$url);
-    }
-    else
-    {
-        $ch=curl_init($url);     // impostiamo l'url per il download
-    }
-    
+    // curl reads the port from the URL itself. The old code split the URL on ":" and took any
+    // number after the second one as the port, so a WMS query with "CRS=EPSG:3857" went to port 3857.
+    $ch=curl_init($url);     // impostiamo l'url per il download
+
     curl_setopt_array($ch,$options);   //settiamo le opzioni
     $ret=curl_exec($ch);    //facciamo richiesta della pagina
-    $sections=explode("\x0d\x0a\x0d\x0a",$ret,2);
+    $sections=explode("\x0d\x0a\x0d\x0a",(string)$ret,2);
+    if (!isset($sections[1]))
+    {
+        $sections[1]="";
+    }
     while(!strncmp($sections[1],'HTTP/',5))
     {
         $sections=explode("\x0d\x0a\x0d\x0a",$sections[1],2);
+        if (!isset($sections[1]))
+        {
+            $sections[1]="";
+        }
     }
     $headers=$sections[0];
     $data=$sections[1];
