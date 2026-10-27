@@ -9,5 +9,10 @@
 		X-Content-Type-Options "nosniff"
 		-Server
 	}
+	# The data folder is never served by its path: record files go through
+	# openkis_file.php, which checks who may read them. Apache in the web
+	# container already refuses it; this keeps it closed at the front end too.
+	@datafolder path /misc/fndatabase /misc/fndatabase/*
+	respond @datafolder 403
 	reverse_proxy web:80
 }
