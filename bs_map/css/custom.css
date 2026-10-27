@@ -74,3 +74,8 @@ button[title=Attributions]{
 .popover h3{
     white-space: nowrap
 }
+/* the popup of a point stays above the zoom buttons, the mouse position and
+   the other map controls */
+.ol-overlaycontainer-stopevent > .ops-popup-overlay{
+    z-index: 101;
+}
