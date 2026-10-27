@@ -77,6 +77,34 @@ jobs:
           # shown by the running image and in the entrypoint log
           echo "$tag" > .openkis-image-version
 
+      # Docker Hub at most once a day: the base images of the day from the
+      # Actions cache (see the base-images job of sync-docker-deploy.yml),
+      # downloaded and cached here when this is the first run of the day
+      - id: base-key
+        run: echo "key=docker-base-images-$(date -u +%Y-%m-%d)-$(deploy/base-images.sh --list | tr ' :/' '-_-')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@v4
+        id: base-images
+        with:
+          path: ~/base-images.tar
+          key: ${{ steps.base-key.outputs.key }}
+
+      - name: Load or download the base images of the day
+        run: |
+          if [ "${{ steps.base-images.outputs.cache-hit }}" = true ]; then
+            docker load -q -i ~/base-images.tar && deploy/base-images.sh --mark
+          else
+            deploy/base-images.sh
+            docker save -o ~/base-images.tar $(deploy/base-images.sh --list)
+          fi
+
+      - if: steps.base-images.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true   # the sync workflow may have saved it meanwhile
+        with:
+          path: ~/base-images.tar
+          key: ${{ steps.base-key.outputs.key }}
+
       - name: Build the image and smoke-test it
         run: deploy/smoke-test.sh
 
