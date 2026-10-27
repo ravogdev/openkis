@@ -28,7 +28,8 @@ docker-compose.build.yml  optional override: build the image from this checkout
 .env.example           all settings; copy to .env
 backup.sh              dumps the database and misc/ into ./backups/
 smoke-test.sh          builds the image and tests it on a throwaway stack
-                       (also fails if the image holds an SQL dump)
+                       (also fails if the image holds an SQL dump);
+                       SMOKE_CUSTOM=lombardia for a regional customisation
 docker/entrypoint.sh   installs/upgrades code in the volume, writes the config from .env
 docker/apache-openkis.conf, docker/php.ini
 patches/               optional extra patches applied at build (empty)
@@ -461,11 +462,22 @@ an existing volume, `down`/`up` with data kept, `backup.sh`.
 Automated: `deploy/smoke-test.sh` builds the image from the checkout and runs
 it on a throwaway stack (own project, port 8099, volumes removed afterwards):
 setup wizard, home, Caves, caves map, control center, demo cave import,
-Refresh map data, map exports, APCu, no PHP errors. The *Sync docker-deploy*
-workflow runs it on every pull request into `develop` and every push to
-`develop`, and moves the `docker-deploy` branch to a `develop` commit only
-after it passes. The *Publish Docker image* workflow runs it again on every
-push to `develop` before pushing the image to Docker Hub.
+Refresh map data, map exports, APCu, the role and regional checks of
+`tests/regional/site-checks.sh` (one account per role, desktop and Android
+browser, cave inserts), no PHP errors. `SMOKE_CUSTOM=lombardia` runs it with
+the Lombardia customisation, which adds the Lombardia checks: the Lombardia
+table definitions, LO<n> and CALO<n> codes, the province rule.
+`tests/lombardia/migration-test.sh` tests the move of the old Lombardia site:
+the old schema and settings without any data (`tests/lombardia/fixture.sql`),
+`db-image/lombardia-migrate.sql`, the regional updates applied by the web
+container, then the same checks; see `tests/lombardia/README.md`, which also
+explains how to run it on the real dump locally.
+
+The *Sync docker-deploy* workflow runs the smoke test (generic and Lombardia)
+and the Lombardia migration test on every pull request into `develop` and every
+push to `develop`, and moves the `docker-deploy` branch to a `develop` commit
+only after they all pass. The *Publish Docker image* workflow runs them again
+on every push to `develop` before pushing the image to Docker Hub.
 
 Not tested: a real hostname with TLS, e-mail, photo/survey uploads through the
-UI, the other regional customisations.
+UI, the regional customisations other than Lombardia.

@@ -3,7 +3,7 @@
 -- Users enabled on a single record ("Gestisci gli utenti abilitati alla modifica",
 --     table fieldusers). The old table has its key in `unirecid`; the new code keys it on
 --     `id` and leaves `unirecid` empty, so every new grant failed with a duplicate key (and
---     so did the grant written for the author of each new record). The existing 652 grants
+--     so did the grant written for the author of each new record). The existing grants
 --     are kept: their number moves from `unirecid` to `id`, which becomes the key.
 --     Runs only while `unirecid` exists, so it is safe to run again.
 -- the column `id` is added by the new code on its first use; a database fresh from the old

@@ -5,12 +5,15 @@
 #   no SQL dump anywhere in the image, fresh install via the setup wizard,
 #   home page, caves list, caves map, every table of the code (create-schema.php),
 #   control center, demo cave import, Refresh map data, map exports, APCu,
+#   role and regional checks (tests/regional/site-checks.sh: one account per
+#   role, desktop and Android, inserts; extra checks for Lombardia),
 #   no PHP errors in the pages or the container log.
 # The stack and its volumes are removed at the end, pass or fail. Nothing is
 # pushed.
 #
 #   git submodule update --init --recursive
 #   deploy/smoke-test.sh            # SMOKE_PORT=8099 by default
+#   SMOKE_CUSTOM=lombardia deploy/smoke-test.sh   # with a regional customisation
 #
 # CI runs it before docker-deploy is moved to a new develop commit, and
 # before an image is published to Docker Hub (publish-image workflow).
@@ -18,6 +21,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 PORT=${SMOKE_PORT:-8099}
+CUSTOM=${SMOKE_CUSTOM:-}
 BASE="http://localhost:$PORT"
 WORK=$(mktemp -d)
 ENVF="$WORK/env"
@@ -26,6 +30,7 @@ cat > "$ENVF" <<EOF
 OPENKIS_DB_PASSWORD=smoke-db-pass
 MARIADB_ROOT_PASSWORD=smoke-root-pass
 OPENKIS_HTTP_PORT=$PORT
+OPENKIS_CUSTOM=$CUSTOM
 EOF
 dc() { docker compose -p openkis-smoke --env-file "$ENVF" -f docker-compose.yml -f docker-compose.build.yml "$@"; }
 cleanup() { dc down -v --remove-orphans >/dev/null 2>&1 || true; rm -rf "$WORK"; }
@@ -111,11 +116,17 @@ for path in /openkis_kml.php /openkis_markers.js.php; do
     ok "$path 200"
 done
 
+echo "== roles and region (${CUSTOM:-generic})"
+DC="docker compose -p openkis-smoke --env-file $ENVF -f docker-compose.yml -f docker-compose.build.yml"
+SITE_SQL="$DC exec -T db mariadb -N -uopenkis -psmoke-db-pass openkis" SITE_PHP="$DC exec -T web php" \
+    ../tests/regional/site-checks.sh "$BASE" "$CUSTOM" || fail "role and regional checks"
+ok "role and regional checks"
+
 echo "== runtime"
 dc exec -T web php -r 'exit(extension_loaded("apcu") ? 0 : 1);' || fail "APCu not loaded"
 ok "APCu loaded"
 n=$(dc logs web 2>&1 | grep -ciE 'PHP (fatal|parse|warning)' || true)
-[ "$n" = 0 ] || fail "$n PHP errors/warnings in the container log"
+[ "$n" = 0 ] || { dc logs web 2>&1 | grep -iE 'PHP (fatal|parse|warning)' | head -20 >&2; fail "$n PHP errors/warnings in the container log"; }
 ok "no PHP errors in the container log"
 
 echo "SMOKE PASS: $(dc exec -T web cat /usr/src/openkis/.openkis-image-version)"

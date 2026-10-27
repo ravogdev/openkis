@@ -2,7 +2,9 @@
 # run by hand (Actions -> Publish Docker image -> Run workflow, on develop),
 # it builds the image from that commit with the finis submodule, runs
 # deploy/smoke-test.sh on it (fresh install, pages, caves map, Refresh map
-# data, and no SQL dump anywhere in the image), and only if that passes pushes
+# data, roles, and no SQL dump anywhere in the image), generic and with the
+# Lombardia customisation, and the Lombardia migration test
+# (tests/lombardia/migration-test.sh), and only if they all pass pushes
 # it as
 #   robydoc/openkis-web:latest
 #   robydoc/openkis-web:YYYY-MM-DD.N   (UTC date; N = 1, 2, ... per day)
@@ -77,6 +79,12 @@ jobs:
 
       - name: Build the image and smoke-test it
         run: deploy/smoke-test.sh
+
+      - name: Smoke-test it with the Lombardia customisation
+        run: SMOKE_CUSTOM=lombardia deploy/smoke-test.sh
+
+      - name: Lombardia migration test
+        run: tests/lombardia/migration-test.sh
 
       - uses: docker/login-action@v3
         with:

@@ -10,6 +10,14 @@ UPDATE `ctl_surveys` s JOIN `ctl_caves` c ON c.`code` = s.`codecave`
 UPDATE `ctl_surveys_artificials` s JOIN `ctl_artificials` a ON a.`code` = s.`codeartificial`
    SET s.`groupview` = a.`groupview`
  WHERE a.`groupview` <> '' AND NOT (s.`groupview` <=> a.`groupview`);
-UPDATE `ctl_surveys_glacial` s JOIN `ctl_glacial` g ON g.`code` = s.`codeglacial`
-   SET s.`groupview` = g.`groupview`
- WHERE g.`groupview` <> '' AND NOT (s.`groupview` <=> g.`groupview`);
+-- Glacial caves only where the database has them (the Lombardia schema has no glacial tables;
+--    an UPDATE of a missing table would fail and stop the later updates).
+SET @okx_sql = IF((SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE()
+                     AND table_name IN ('ctl_surveys_glacial', 'ctl_glacial')) = 2,
+  'UPDATE `ctl_surveys_glacial` s JOIN `ctl_glacial` g ON g.`code` = s.`codeglacial`
+      SET s.`groupview` = g.`groupview`
+    WHERE g.`groupview` <> \'\' AND NOT (s.`groupview` <=> g.`groupview`)',
+  'DO 0');
+PREPARE okx_stmt FROM @okx_sql;
+EXECUTE okx_stmt;
+DEALLOCATE PREPARE okx_stmt;

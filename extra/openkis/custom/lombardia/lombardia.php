@@ -71,7 +71,7 @@ function GeneraNumeroArtificials($values)
 function GeneraNumero($values)
 {
 //se il numero non è già impostato non faccio nulla
-    if ($values['code']!= "")
+    if (!empty($values['code']))
     {
         return $values;
     }
