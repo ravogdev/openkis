@@ -1012,24 +1012,24 @@ CREATE TABLE `fn_groups` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin;
 
 /*!40000 ALTER TABLE `fn_groups` DISABLE KEYS */;
-INSERT INTO `fn_groups` VALUES ('RW_BS','CURATORI BRESCIA');
+INSERT INTO `fn_groups` VALUES ('RW_BS','');
 INSERT INTO `fn_groups` VALUES ('grotte_nascoste','');
 INSERT INTO `fn_groups` VALUES ('users','');
-INSERT INTO `fn_groups` VALUES ('RW_CO_LC_SO_MI_PV','CURATORI LECCO,COMO,SONDRIO,MILANO,PAVIA');
+INSERT INTO `fn_groups` VALUES ('RW_CO_LC_SO_MI_PV','');
 INSERT INTO `fn_groups` VALUES ('w_artificials','');
-INSERT INTO `fn_groups` VALUES ('RW_BG','CURATORI BERGAMO');
-INSERT INTO `fn_groups` VALUES ('grotte_sicure','CURATORI GROTTE SICURE');
+INSERT INTO `fn_groups` VALUES ('RW_BG','');
+INSERT INTO `fn_groups` VALUES ('grotte_sicure','');
 INSERT INTO `fn_groups` VALUES ('r_fauna','');
-INSERT INTO `fn_groups` VALUES ('RW_VA','CURATORI VARESE');
+INSERT INTO `fn_groups` VALUES ('RW_VA','');
 INSERT INTO `fn_groups` VALUES ('w_fauna','');
-INSERT INTO `fn_groups` VALUES ('READ_SPELEOPALEO','Utente sola lettura Speleopaleo');
+INSERT INTO `fn_groups` VALUES ('READ_SPELEOPALEO','');
 INSERT INTO `fn_groups` VALUES ('r_caves','');
 INSERT INTO `fn_groups` VALUES ('r_artificials','');
 INSERT INTO `fn_groups` VALUES ('w_caves','');
 INSERT INTO `fn_groups` VALUES ('archeologi','');
 INSERT INTO `fn_groups` VALUES ('catasto_lettura','');
-INSERT INTO `fn_groups` VALUES ('catasto_inserimento','Gruppo per l\'inserimento di grotte nuove');
-INSERT INTO `fn_groups` VALUES ('catasto_amministratori','Gruppo per gli Amministratori del gestionale catasto');
+INSERT INTO `fn_groups` VALUES ('catasto_inserimento','');
+INSERT INTO `fn_groups` VALUES ('catasto_amministratori','');
 /*!40000 ALTER TABLE `fn_groups` ENABLE KEYS */;
 DROP TABLE IF EXISTS `fn_sections`;
 CREATE TABLE `fn_sections` (

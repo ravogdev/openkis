@@ -46,11 +46,12 @@ without the setup wizard and without PHP errors in the container log.
 - the structure of all its 78 tables, with no rows, and no `AUTO_INCREMENT`
   counters (they tell how many rows a table had);
 - the rows of the settings tables only (581 rows): `fn_sections`, `fn_groups`
-  (group names and descriptions), `fn_settings`, `fn_blocks`,
+  (group names only), `fn_settings`, `fn_blocks`,
   `fn_sectionstypes`, `extra_s_openkis`, `plugins_s_statistics`, the module
   settings `fncf_*` and the theme settings `themes_s_*`;
-- blanked: the OpenAI API key (`fncf_openai`), the site address (`siteurl`)
-  and the site e-mail address (`noreply@example.invalid`).
+- blanked: the OpenAI API key (`fncf_openai`), the site address (`siteurl`),
+  the site e-mail address (`noreply@example.invalid`) and the group
+  descriptions.
 
 No user, cave, survey, photo, bibliography, attachment, log or statistics row
 is in it. The test adds its own accounts and fake caves.

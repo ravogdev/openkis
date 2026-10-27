@@ -31,10 +31,11 @@ mariadb-dump --no-data --skip-comments --skip-dump-date "$SRC" | mariadb "$FIX"
 for t in $CFG; do
     mariadb -e "INSERT INTO $FIX.\`$t\` SELECT * FROM $SRC.\`$t\`"
 done
-# secrets and addresses
+# secrets, addresses, and the group descriptions (names of curators' areas)
 mariadb "$FIX" -e "UPDATE fncf_openai SET varvalue = '' WHERE varname = 'apikey';
                    UPDATE fn_settings SET varvalue = '' WHERE varname = 'siteurl';
-                   UPDATE fn_settings SET varvalue = 'noreply@example.invalid' WHERE varname = 'site_email_address';"
+                   UPDATE fn_settings SET varvalue = 'noreply@example.invalid' WHERE varname = 'site_email_address';
+                   UPDATE fn_groups SET description = '';"
 
 {
     echo "-- Lombardia migration test fixture, made by tests/lombardia/make-fixture.sh:"
