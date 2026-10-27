@@ -128,7 +128,7 @@ same server. Example for Lombardia (the others work the same way):
    OPENKIS_DB_NAME=openkis_lombardia
    OPENKIS_CUSTOM=lombardia                 # regional rules, map centre
    OPENKIS_HOME_SECTION=map_caves           # landing page: the regional cave map
-   OPENKIS_ENABLE_PROXY=1                   # Lombardia only: its IGM map layer
+   OPENKIS_ENABLE_PROXY=1                   # Lombardia only: IGM and geological map layers
    ```
 2. From `deploy/`: `docker compose --env-file custom-env/lombardia.env up -d`,
    then open `http://<server>:8084/` and run the wizard as in the quick start.
@@ -434,7 +434,8 @@ restarts; trust it only on your own machines.
   (reads any `*.las` path or URL) and `finis/{utils,tests,examples}/`. Run
   `clear_cache.php` with `docker compose exec web php clear_cache.php` instead.
 - `openkis_proxy.php` is an open HTTP proxy (SSRF). It is blocked unless
-  `OPENKIS_ENABLE_PROXY=1`; only the Lombardia IGM map layer needs it.
+  `OPENKIS_ENABLE_PROXY=1`; only the Lombardia IGM and geological map layers
+  need it.
 - The finis query layer still evaluates `WHERE` clauses with PHP `eval()`.
   The finis `develop` branch strips `` ` $ { } `` from them before
   evaluation, which closes the known code-execution path through a cave's
