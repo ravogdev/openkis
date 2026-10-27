@@ -9,7 +9,7 @@
 --    The development and depth of the systems were kept by the old site only in the legacy
 --    columns SVILRE and DTOT (lenght_total and depth_total are empty on all 10 systems), and the
 --    cave-system page no longer fills them with the sum of its caves: they are copied where
---    empty. A value already set is not touched.
+--    empty (decided 2026-10-27). A value already set is not touched.
 ALTER TABLE `ctl_caves` ADD COLUMN IF NOT EXISTS `lenght_scope` varchar(255) NOT NULL DEFAULT '';
 ALTER TABLE `ctl_caves_versions` ADD COLUMN IF NOT EXISTS `lenght_scope` varchar(255) NOT NULL DEFAULT '';
 ALTER TABLE `ctl_cavesystems` ADD COLUMN IF NOT EXISTS `lenght_auto` varchar(255) NOT NULL DEFAULT '';
