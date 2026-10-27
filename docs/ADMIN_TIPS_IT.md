@@ -40,6 +40,18 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 - **I codici negli elenchi della bibliografia devono corrispondere esattamente**, a parte gli spazi attorno alle virgole: `LO1172, LO1170` collega entrambe le grotte. Uno spazio o un errore dentro un codice (`LO 2797`) non corrisponde alla grotta `LO2797`, quindi quella voce non compare nella sua scheda; correggi l'elenco nella voce di bibliografia.
 - **La struttura delle tabelle resta in cache fino a 10 minuti.** Dopo aver aggiunto o modificato una colonna a mano, usa "Svuota cache" o riavvia il container web, perché la modifica sia vista subito.
 
+## Complessi carsici
+
+- **"Sviluppo riferito a" nella scheda grotta.** Ogni scheda può indicare se il suo sviluppo (e i dislivelli) si riferisce all'intera grotta ("complessivo") o solo al ramo di questo ingresso ("parziale"). In Lombardia il campo parte vuoto, anche sulle schede nuove: i curatori lo compilano quando la grotta fa parte di un complesso. Nelle altre regioni le schede nuove partono da "complessivo". Le schede esistenti restano vuote finché qualcuno non sceglie il valore.
+- **Lo sviluppo di un complesso viene ricalcolato quando si salva una grotta o un complesso** tramite OpenKIS (form web o server MCP). Il valore diventa lo sviluppo più grande tra le grotte del complesso indicate come "complessivo". Se nessuna è "complessivo", è la somma di quelle indicate come "parziale", dove uno sviluppo vuoto conta 0. Le grotte con il campo vuoto non contano. Un complesso con tutte le grotte ancora vuote mantiene il valore salvato. Le grotte del complesso sono i codici del suo elenco grotte, confrontati esattamente (gli spazi attorno alle virgole sono ignorati).
+- **Il dislivello di un complesso non viene mai ricalcolato.** Resta sempre il valore inserito nel complesso.
+- **Disattivarlo per un complesso.** Imposta **Ricalcolo automatico dello sviluppo** = No nel complesso, per esempio dopo una giunzione che le schede delle grotte non riportano ancora. Lo sviluppo inserito a mano viene così mantenuto. Un valore vuoto conta come Sì.
+- **Aprire la pagina di un complesso non sovrascrive più sviluppo e dislivello.** Prima di questa modifica ogni visualizzazione, anche anonima, li sostituiva con la somma degli sviluppi delle grotte, che contava più volte gli stessi rami. Ora la pagina mostra i valori salvati. Quando sono diversi, mostra anche in grigio la somma degli sviluppi delle schede e il dislivello calcolato dalle quote degli ingressi.
+- **Il ricalcolo è silenzioso.** Non cambia la data di "ultima modifica" del complesso né la sua cronologia. Parte solo quando grotte o complessi sono cambiati dall'ultima volta (un'impronta temporale in `misc/_cache/openkis_UpdateCaveSystems.time`). Dopo modifiche fatte direttamente nel database a grotte o complessi, esegui **Pannello di controllo > Utilità > Aggiorna dati mappa**, che ricalcola anche i complessi.
+- **Lombardia: i valori storici vengono mantenuti.** Il vecchio sito conservava sviluppo e dislivello dei 10 complessi solo nelle vecchie colonne `SVILRE` e `DTOT`. L'aggiornamento del database li copia nei campi usati dalle pagine, dove sono vuoti. Un curatore che imposta una grotta del complesso a "complessivo" sostituisce lo sviluppo salvato con lo sviluppo di quella grotta. Imposta prima il complesso a No quando il valore salvato deve restare.
+- **Una volta scelto, "Sviluppo riferito a" non si può svuotare dal form**, solo cambiare nell'altro valore. Un valore vuoto è possibile solo dal database.
+- **Per salvare un complesso serve il Codice.** I complessi lombardi migrati non ce l'hanno, quindi il form di modifica non salva finché non lo si inserisce.
+
 ## Siti regionali
 
 - **Nazione e regione precompilate nei moduli di inserimento.** Sui siti italia, marche, liguria e umbria il modulo "nuova grotta" (e, tranne che su liguria, anche "nuova cavità artificiale" e "nuova sorgente") parte con nazione ITALIA e la regione del sito. Il sito italia, essendo nazionale, non precompila la regione: la sceglie il curatore (prima precompilava MARCHE per errore). I valori sono solo un punto di partenza nel modulo; i record salvati dall'API o da un import non ricevono valori predefiniti.
@@ -47,6 +59,7 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 ## Modifiche allo schema del database
 
 - **Le colonne mancanti vengono aggiunte automaticamente.** Quando la definizione di una tabella riceve un nuovo campo, OpenKIS aggiunge la colonna alla prima pagina che apre quella tabella. Sulle tabelle grandi quella pagina sarà lenta una volta. Per gli import grandi, esegui prima l'SQL di migrazione, prima che il container web parta.
+- **I campi aggiunti alle definizioni del codice arrivano anche ai siti esistenti.** OpenKIS non sostituisce mai una definizione di tabella già presente in `misc/fndatabase`, ma le aggiunge i pochi campi introdotti nel codice dopo (ora `lenght_scope` in `ctl_caves` e `ctl_caves_versions`, e `lenght_auto` in `ctl_cavesystems`), una volta sola, alla prima richiesta dopo l'aggiornamento. I campi modificati a mano in quei file vengono mantenuti.
 
 ## Aggiornamenti e immagine Docker
 

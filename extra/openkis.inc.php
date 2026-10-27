@@ -539,6 +539,12 @@ function openkis_RefreshMapData()
             $done[] = "$mod: " . FN_Translate("coordinates recalculated");
         }
     }
+    // cave-system development from the member records (#76)
+    if (FN_XMDBTable("ctl_cavesystems"))
+    {
+        openkis_UpdateCaveSystems(true);
+        $done[] = "ctl_cavesystems: " . FN_Translate("development recalculated");
+    }
     $done = array_merge($done, openkis_SyncRecordIds());
     $done = array_merge($done, openkis_SyncSurveyGroups(true));
     return $done;
