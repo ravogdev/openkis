@@ -6,9 +6,14 @@ checkout it was built from. Every build gives the same database for the same
 commit, so a deleted or recreated volume comes back in sync with the code.
 
 ```sh
-deploy/db-image/build.sh lombardia /path/to/old-site-dump.sql /path/to/lombardia-migrate.sql
+deploy/db-image/build.sh lombardia /path/to/old-site-dump.sql deploy/db-image/lombardia-migrate.sql
 # -> openkis-db-lombardia:<commit>
 ```
+
+`lombardia-migrate.sql` (in this folder) changes only the schema and the
+settings, never the data. CI runs it on the old schema without data
+(`tests/lombardia/migration-test.sh`), so a step that fails on the Lombardia
+database shows up in the pull request.
 
 On the first start of an empty volume the image runs, in order:
 

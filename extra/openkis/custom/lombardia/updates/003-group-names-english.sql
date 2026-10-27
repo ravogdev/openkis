@@ -3,7 +3,7 @@
 -- Group names in English (upstream 8f47438): grotte_nascoste -> hidden_caves and
 --    archeologi -> archaeologists, in the groups, the users, the section and block access and
 --    the per-record restrictions (comma separated lists: only whole names are replaced).
---    On the dump: 2 users (admin, testspeleo2) and the fauna_surveys section; no record.
+--    On the dump: a few users and the fauna_surveys section; no record.
 --    catasto_scrittura, fauna and curatori stay as they are: Lombardia's section access is in
 --    the database, and no user is in fauna or curatori.
 UPDATE `fn_groups` SET `groupname` = 'hidden_caves' WHERE `groupname` = 'grotte_nascoste';

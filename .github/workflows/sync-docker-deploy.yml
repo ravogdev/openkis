@@ -1,7 +1,9 @@
 # Keeps the docker-deploy branch in step with develop. On every push to
 # develop the web image is built from that commit and smoke-tested
-# (deploy/smoke-test.sh: fresh install, pages, caves map, Refresh map data);
-# only if that passes is docker-deploy fast-forwarded to the same commit
+# (deploy/smoke-test.sh: fresh install, pages, caves map, Refresh map data,
+# roles), generic and with the Lombardia customisation, and the Lombardia
+# migration test runs (tests/lombardia/migration-test.sh); only if they all
+# pass is docker-deploy fast-forwarded to the same commit
 # (finis submodule pointer included). A failing build or test leaves
 # docker-deploy on the last commit that passed. No image is pushed.
 #
@@ -35,6 +37,26 @@ concurrency:
 
 jobs:
   smoke-test:
+    name: smoke-test (${{ matrix.custom || 'generic' }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # empty = generic installation; lombardia adds its regional checks
+        custom: ["", lombardia]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build the image and smoke-test it
+        run: deploy/smoke-test.sh
+        env:
+          SMOKE_CUSTOM: ${{ matrix.custom }}
+
+  lombardia-migration:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,11 +65,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build the image and smoke-test it
-        run: deploy/smoke-test.sh
+      - name: Old Lombardia database -> migration -> regional updates -> checks
+        run: tests/lombardia/migration-test.sh
 
   sync:
-    needs: smoke-test
+    needs: [smoke-test, lombardia-migration]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
