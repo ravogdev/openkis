@@ -45,6 +45,13 @@ Cose che l'applicazione fa da sola, limiti che possono sorprendere e il modo cor
 - **Satellite e OSM Landscape richiedono le chiavi API** (`MAPTILER_API_KEY`, `THUNDERFOREST_API_KEY` nel `.env`, poi riavvia il container web). Senza chiavi questi due livelli restano vuoti.
 - **La struttura delle tabelle resta in cache fino a 10 minuti.** Dopo aver aggiunto o modificato una colonna a mano, usa "Svuota cache" o riavvia il container web, perché la modifica sia vista subito.
 
+## Ricerca nel sito
+
+- **La casella di ricerca nel menu cerca tutte le parole, nello stesso campo.** `alfa beta gamma` trova i record con un campo (nome, descrizione, note...) che contiene "alfa", "beta" e "gamma", in qualsiasi ordine. Prima la casella del menu cercava la frase esatta. Una parola del nome insieme al codice della grotta (`gamma LO0000`) non trova nulla, perché sono in campi diversi; la pagina di ricerca offre ancora "Qualsiasi parola" e "Frase esatta".
+- **Al massimo 30 risultati per sezione**, 500 in tutto. I risultati sono raggruppati per sezione; il testo sotto un risultato è formato dai primi 160 caratteri della descrizione del record, ed è vuoto quando il record non ne ha.
+- **I record riservati vengono scartati dopo il limite.** Per ogni sezione il database restituisce i primi 31 record che corrispondono, e quelli che il visitatore non può vedere (per esempio le grotte nascoste per i visitatori anonimi) vengono tolti dopo. Con una parola comune una sezione può quindi mostrare meno risultati di quelli che il visitatore potrebbe vedere, o nessuno. Usare parole più precise, oppure il modulo di ricerca della sezione stessa (elenco delle grotte), che non ha questo limite.
+- La ricerca guarda in tutti i campi del record che la tabella mostra nei suoi moduli, anche in quelli che un visitatore non vede nella scheda. Mostra solo il titolo, la descrizione e il link.
+
 ## Complessi carsici
 
 - **"Sviluppo riferito a" nella scheda grotta.** Ogni scheda può indicare se il suo sviluppo (e i dislivelli) si riferisce all'intera grotta ("complessivo") o solo al ramo di questo ingresso ("parziale"). In Lombardia il campo parte vuoto, anche sulle schede nuove: i curatori lo compilano quando la grotta fa parte di un complesso. Nelle altre regioni le schede nuove partono da "complessivo". Le schede esistenti restano vuote finché qualcuno non sceglie il valore.

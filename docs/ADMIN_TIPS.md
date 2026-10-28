@@ -45,6 +45,13 @@ Things the application does on its own, limits that can surprise you, and the ri
 - **Satellite and OSM Landscape need API keys** (`MAPTILER_API_KEY`, `THUNDERFOREST_API_KEY` in `.env`, then restart the web container). Without them those two layers stay blank.
 - **Table structure is cached for up to 10 minutes.** After adding or changing a column by hand, use "Clear cache" or restart the web container, so the change is seen at once.
 
+## Site search
+
+- **The search box in the menu looks for all the words, in the same field.** `alfa beta gamma` finds the records with a field (name, description, notes...) that contains "alfa", "beta" and "gamma", in any order. Before, the menu box looked for the exact phrase. A word of the name and the cave code together (`gamma LO0000`) find nothing, because they are in different fields; the search page still offers "Any word" and "Exact phrase".
+- **At most 30 results per section**, 500 in all. Results are grouped by section; the text under a result is the first 160 characters of the record description, and is empty when the record has none.
+- **Restricted records are left out after the limit.** For each section the database returns the first 31 records that match, and those the visitor may not see (for example hidden caves for anonymous visitors) are dropped afterwards. With a common word a section can therefore show fewer results than the visitor could see, or none. Use more specific words, or the search form of the section itself (caves list), which has no such limit.
+- The search looks in every field of the record that the table shows in its forms, also in fields a visitor may not see on the sheet. It shows only the title, the description and the link.
+
 ## Cave systems
 
 - **"Development refers to" on the cave form.** Each cave record can say whether its development (and depth) refers to the whole cave ("whole cave") or only to the branch of this entrance ("this entrance only"). On Lombardia the field starts empty, on new records too: curators set it when a cave belongs to a cave system. Other regions start new records at "whole cave". Existing records stay empty until someone sets the value.
