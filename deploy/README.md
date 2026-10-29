@@ -470,7 +470,8 @@ it on a throwaway stack (own project, port 8099, volumes removed afterwards):
 setup wizard, home, Caves, caves map, control center, demo cave import,
 Refresh map data, map exports, APCu, the role and regional checks of
 `tests/regional/site-checks.sh` (one account per role, desktop and Android
-browser, cave inserts), no PHP errors. `SMOKE_CUSTOM=lombardia` runs it with
+browser, cave inserts, cave systems sorted by value), the per-record edit
+permissions of `tests/regional/record-permissions.sh`, no PHP errors. `SMOKE_CUSTOM=lombardia` runs it with
 the Lombardia customisation, which adds the Lombardia checks: the Lombardia
 table definitions, LO<n> and CALO<n> codes, the province rule.
 `tests/lombardia/migration-test.sh` tests the move of the old Lombardia site:

@@ -16,7 +16,9 @@
 #   4. lombardia: the Lombardia table definitions are in use, new caves get the
 #      next LO<n> code, the province check (an RW_BG user may save in BG, not
 #      in BS), new artificial cavities get CALO<n>
-#   5. removes the test records it inserted (the accounts stay)
+#   5. the cave systems list orders lengths and depths by value (numbers
+#      stored as text; depths by absolute value)
+#   6. removes the test records it inserted (the accounts stay)
 #
 # Settings (environment variables):
 #   SITE_SQL   command that reads SQL on stdin for the site's database
@@ -257,6 +259,34 @@ if [ -n "$(sqlv "SELECT id FROM fn_sections WHERE id = 'caves'")" ]; then
             check "lombardia: new artificial cavity numbered CALO<n> (got '$acode')" bash -c "[[ '$acode' =~ ^CALO[0-9]+$ ]]"
         fi
     fi
+fi
+
+# --- numeric sort of measures (os_lenght, upstream 9a0f590) -----------------------
+# lengths and depths are stored as text: the list orders them by value, depths
+# by absolute value (954 after 97 and 12,5; -150 before -40 and 12)
+if [ -n "$(sqlv "SELECT id FROM fn_sections WHERE id = 'cavesystem'")" ]; then
+    sqlv "DELETE FROM ctl_cavesystems WHERE name LIKE 'regional-test-sort-%';
+          INSERT INTO ctl_cavesystems (id, name, lenght_total, depth_total) VALUES
+          ('990201', 'regional-test-sort-a', '97', '-40'),
+          ('990202', 'regional-test-sort-b', '954', '12'),
+          ('990203', 'regional-test-sort-c', '12,5', '-150');" >/dev/null
+    orders=$(sqlv "SELECT varvalue FROM fncf_cavesystem WHERE varname = 'search_orders'")
+    sorted() { # sorted <field> <desc> -> the test systems in list order
+        get "/index.php?mod=cavesystem&order=$1&desc=$2&filter_name=regional-test-sort-a,regional-test-sort-b,regional-test-sort-c" >/dev/null
+        grep -v 'filter_name=' "$WORK/page" | grep -o 'regional-test-sort-[abc]' | awk '!seen[$0]++' | sed 's/regional-test-sort-//' | tr -d '\n'
+    }
+    login admin
+    for device in desktop android; do
+        [ $device = desktop ] && UA=$UA_DESKTOP || UA=$UA_ANDROID
+        for want in "lenght_total|1|bac" "lenght_total||cab" "depth_total|1|cab" "depth_total||bac"; do
+            IFS='|' read -r f d w <<< "$want"
+            [[ ",$orders," == *",$f,"* ]] || continue
+            got=$(sorted "$f" "$d")
+            check "$device: cave systems by $f${d:+ descending}: $w (got '$got')" [ "$got" = "$w" ]
+        done
+    done
+    UA=$UA_DESKTOP
+    sqlv "DELETE FROM ctl_cavesystems WHERE name LIKE 'regional-test-sort-%'" >/dev/null
 fi
 
 # --- 5. clean up -----------------------------------------------------------------

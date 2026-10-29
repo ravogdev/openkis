@@ -36,7 +36,29 @@ Lombardia checks run with `lombardia`):
   user without `RW_BG` may not save in BG; the administrator may save in any
   province; the new cave form is the Lombardia one (`DATAGG`, no `alias`);
   new artificial cavities get `CALO<n>`;
+- the cave systems list orders development and depth by value (numbers
+  stored as text; depths by absolute value: upstream 9a0f590);
 - the test records are removed at the end (the accounts stay).
+
+`tests/regional/record-permissions.sh <base-url> <region>` (after
+`site-checks.sh`; upstream c1d7ba5 tests the same on its own install) checks
+the per-record edit groups of the caves section
+(`enable_permissions_edit_each_records` = 1, #80) for a desktop and an Android
+browser, with an editor in the section's insert group, `RW_BG` and `r_caves`
+(on Lombardia the curator's groups):
+
+- a record reserved to another group (`groupinsert` = `RW_BS`): no edit form,
+  the save is refused, no enabled-user row can be added, the record can still
+  be viewed; the administrator edits it and opens the enabled-users page;
+- enabled on the record by the administrator, the editor saves it; removed,
+  refused again; a record without edit groups can be edited; with the setting
+  off, anyone who may add may edit;
+- anonymous, read-only and read-write users get no edit form and can't save
+  or add enabled users;
+- Lombardia: on a BS cave the editor gets the province refusal; enabled on
+  it, the editor can save it.
+
+The setting is put back and the test caves removed at the end.
 
 `migration-test.sh` also checks that every regional update was applied, that
 none failed (a failed update stops the later ones), and that the site opens
