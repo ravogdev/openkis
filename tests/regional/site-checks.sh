@@ -161,6 +161,14 @@ for device in desktop android; do
             check "$tag: $sec no PHP errors" [ "$(php_errors)" = 0 ]
             if can_view "$role" "$sec"; then
                 check "$tag: $sec visible" bash -c "! grep -qiE \"you don't have permission|non hai i permessi\" '$WORK/page'"
+                # caves list and map page layout (search bar, open/closed badges, map height)
+                if [ "$sec" = caves ]; then
+                    check "$tag: caves search bar" grep -q 'id="searchtext"' "$WORK/page"
+                    check "$tag: caves cards carry the closed value" grep -q 'data-closed="' "$WORK/page"
+                    check "$tag: caves closed badge rule" grep -qF '.card[data-closed="S"] .openkis-badge-closed' "$WORK/page"
+                elif [ "$sec" = map_caves ]; then
+                    check "$tag: map_caves map fills the screen" grep -q 'height:calc(100vh - 190px);min-height:400px' "$WORK/page"
+                fi
             else
                 check "$tag: $sec denied" no_permission
             fi
@@ -190,6 +198,9 @@ for device in desktop android; do
         # the map asks openkis_map_access.js.php which layers it may load
         # (#99): a section it lists as allowed must answer 200, one it lists
         # as not allowed is skipped by the map and answers 403
+        code=$(get /bs_map.htm)
+        check "$tag: bs_map.htm 200" [ "$code" = 200 ]
+        check "$tag: bs_map.htm loads the current map stylesheet" grep -q 'bs_map/css/custom.css?v=20261029' "$WORK/page"
         code=$(get /openkis_map_access.js.php)
         check "$tag: map access script 200" [ "$code" = 200 ]
         check "$tag: map access script no PHP errors" [ "$(php_errors)" = 0 ]
