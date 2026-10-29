@@ -1747,6 +1747,22 @@ var OPS_Map = {
     HtmlLayerItemsBaselayers: function (tlayers)
     {
         var html = "";
+        // base layer asked by the link: ?basemap=<name> (or ?baselayer=<name>, used by
+        // the section pages); the first layer when absent or when no layer has that name
+        var getname = this.getUrlVar("basemap", "") || this.getUrlVar("baselayer", "");
+        getname = decodeURIComponent(String(getname).replace(/\+/g, " "));
+        var found = false;
+        for (var j = 0; j < tlayers.length; j++)
+        {
+            if (!tlayers[j].getLayers && tlayers[j].get('name') == getname)
+            {
+                found = true;
+            }
+        }
+        if (!found)
+        {
+            getname = "";
+        }
         for (var i = 0; i < tlayers.length; i++)
         {
             var layer = tlayers[i];
@@ -1757,7 +1773,6 @@ var OPS_Map = {
             } else
             {
                 var checked = "";
-                var getname = this.getUrlVar("basemap", "");
                 if ((i == 0 && getname == "") || getname == name)
                 {
                     checked = "checked";
