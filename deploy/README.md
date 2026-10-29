@@ -158,6 +158,7 @@ them.
 | `OPENKIS_MCP_APIKEY`, `OPENKIS_MCP_USER`, `OPENKIS_MCP_READONLY` | legacy global MCP key (`openkis_mcp.php`), full access as `OPENKIS_MCP_USER`; off while empty |
 | `OPENKIS_APIKEY_GROUPS`, `OPENKIS_MCP_WRITE_GROUP` | personal API keys: groups that may use a key and groups allowed to use the MCP write tools (comma separated; admins always can). Empty = `mcp_users` and `mcp_write` |
 | `THUNDERFOREST_API_KEY`, `MAPTILER_API_KEY`, `ALGOLIA_DOCSEARCH_API_KEY` | optional map/search keys |
+| `OPENKIS_ENABLE_PROXY`, `OPENKIS_PROXY_HOSTS` | map proxy `openkis_proxy.php`: `1` = on (Lombardia only, for the IGM and geological layers), `0` (default) = blocked; extra hosts it may fetch from besides the hosts of the proxied layers in `bs_map/conf/layers_*.js` and the site's own host, comma separated |
 | `OPENKIS_TRUSTED_PROXIES` | reverse proxies whose `X-Forwarded-For` header gives the visitor's address: addresses or CIDR ranges, comma separated. `docker` (default) = the other containers on the web container's networks, such as the bundled Caddy; `none` = off. A proxy on the host or on another machine is added by address. Needed for the login lockout and the access log behind a proxy |
 | `OPENKIS_VALIDATOR_RULES_OFF` | record validator rules to switch off, comma separated, overriding the region's rules: `name`, `description`, `coordinates`, `reference_system`, `elevation`, `comune`, `provincia`, `speleometric`, `depth_total`, or the label of a regional rule; `all` hides the banner. Empty (default) = all rules on |
 | `OPENKIS_DISPLAY_ERRORS` | `off` (default). `on` shows PHP errors in pages; development only, warnings corrupt the KML/JSON/GPX exports |
@@ -439,9 +440,14 @@ restarts; trust it only on your own machines.
   `clear_cache.php` (deletes files from a path in the URL), `openkis_las.php`
   (reads any `*.las` path or URL) and `finis/{utils,tests,examples}/`. Run
   `clear_cache.php` with `docker compose exec web php clear_cache.php` instead.
-- `openkis_proxy.php` is an open HTTP proxy (SSRF). It is blocked unless
+- `openkis_proxy.php` fetches map tiles for the browser. It is blocked unless
   `OPENKIS_ENABLE_PROXY=1`; only the Lombardia IGM and geological map layers
-  need it.
+  need it. It fetches only `http`/`https` URLs on ports 80, 443, 8080 and 8443
+  of the hosts of the proxied layers in `bs_map/conf/layers_*.js`, the site's
+  own host and `OPENKIS_PROXY_HOSTS`; it checks each redirect, refuses
+  anything else with 403, and passes non-map answers (HTML pages) on as plain
+  text. It can still reach other services on those ports of the site's own
+  host, so keep it off on sites that don't need it.
 - The finis query layer still evaluates `WHERE` clauses with PHP `eval()`.
   The finis `develop` branch strips `` ` $ { } `` from them before
   evaluation, which closes the known code-execution path through a cave's

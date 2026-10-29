@@ -29,6 +29,7 @@ say() { echo "[openkis] $*"; }
 : "${OPENKIS_DISPLAY_ERRORS:=off}"
 : "${OPENKIS_HOME_SECTION:=}"
 : "${OPENKIS_ENABLE_PROXY:=0}"
+: "${OPENKIS_PROXY_HOSTS:=}"
 : "${OPENKIS_TRUSTED_PROXIES:=docker}"
 : "${OPENKIS_VALIDATOR_RULES_OFF:=}"
 
@@ -88,6 +89,10 @@ if [ ! -f "$CONF" ] || grep -q "$MARKER" "$CONF"; then
         if [ -n "$OPENKIS_VALIDATOR_RULES_OFF" ]; then
             echo "\$_FN['openkis_validator_rules_off'] = $(phpq "$OPENKIS_VALIDATOR_RULES_OFF");"
         fi
+        # map proxy: hosts allowed besides those of the bs_map/conf/layers_*.js files
+        if [ -n "$OPENKIS_PROXY_HOSTS" ]; then
+            echo "\$_FN['openkis_proxy_hosts'] = $(phpq "$OPENKIS_PROXY_HOSTS");"
+        fi
         if [ -n "$OPENKIS_MCP_WRITE_GROUP" ]; then
             echo "\$_FN['openkis_mcp_write_group'] = $(phpq "$OPENKIS_MCP_WRITE_GROUP");"
         fi
@@ -140,11 +145,13 @@ if [ -n "$OPENKIS_HOME_SECTION" ] && [ ! -d "$WEBROOT/sections/$OPENKIS_HOME_SEC
     say "WARNING: OPENKIS_HOME_SECTION=$OPENKIS_HOME_SECTION but sections/$OPENKIS_HOME_SECTION/ does not exist"
 fi
 
-# openkis_proxy.php forwards any URL from the server (SSRF). Only the
-# Lombardia map layers use it (IGM WMS), so it is off unless asked for.
+# openkis_proxy.php fetches map tiles from other servers for the browser. It
+# accepts only the hosts of the proxied layers in bs_map/conf/layers_*.js, the
+# site's own host and OPENKIS_PROXY_HOSTS, but only the Lombardia layers (IGM
+# and geological WMS) need it, so it is off unless asked for.
 if [ "$OPENKIS_ENABLE_PROXY" = 1 ]; then
     rm -f /etc/apache2/conf-enabled/openkis-proxy.conf
-    say "WARNING: openkis_proxy.php enabled (open HTTP proxy for anyone who can reach the site)"
+    say "openkis_proxy.php enabled (map layer hosts only${OPENKIS_PROXY_HOSTS:+, plus $OPENKIS_PROXY_HOSTS})"
 else
     printf '<LocationMatch "^/+openkis_proxy\\.php">\n    Require all denied\n</LocationMatch>\n' \
         > /etc/apache2/conf-enabled/openkis-proxy.conf
