@@ -16,7 +16,7 @@ OPS_Map.MyAddLayers = function ()
 
     OPS_Map.addOSMLayer("OSM Landscape", "https://a.tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=" + API_KEYS.THUNDERFOREST, true, false);
 
-    OPS_Map.addWMSLayer("IGM 1:25000 Piemonte", "openkis_proxy.php/http://sgi2.isprambiente.it/arcgis/services/raster/igm25k_piemonte_wgs/ImageServer/WMSServer", 'igm25k_piemonte_wgs', false, false, "png", 'EPSG:4326');
+    OPS_Map.addWMSLayer("IGM 1:25000 Lombardia", "openkis_proxy.php/http://sgi2.isprambiente.it/arcgis/services/raster/igm25k_lombardia_wgs/ImageServer/WMSServer", 'igm25k_lombardia_wgs', false, false, "png", 'EPSG:4326');
 
     //OPS_Map.addWMSLayer("IGM 1:25000 Liguria", "openkis_proxy.php/http://sgi2.isprambiente.it/arcgis/services/raster/igm25k_liguria_wgs/ImageServer/WMSServer", 'igm25k_piemonte_wgs', false, false, "png", 'EPSG:4326');
 
