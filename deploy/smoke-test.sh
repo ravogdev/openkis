@@ -7,10 +7,11 @@
 #   control center, demo cave import, Refresh map data, map exports, map proxy
 #   (blocked, or with Lombardia: refuses every host but the map layer hosts), APCu,
 #   role and regional checks (tests/regional/site-checks.sh: one account per
-#   role, desktop and Android, inserts; extra checks for Lombardia),
+#   role, desktop and Android, inserts; extra checks for Lombardia), per-record
+#   edit permissions (tests/regional/record-permissions.sh),
 #   no PHP errors in the pages or the container log.
-# The stack and its volumes are removed at the end, pass or fail. Nothing is
-# pushed.
+# The stack and its volumes are removed at the end, pass or fail
+# (SMOKE_KEEP=1 leaves it running, to look at it). Nothing is pushed.
 #
 #   git submodule update --init --recursive
 #   deploy/smoke-test.sh            # SMOKE_PORT=8099 by default
@@ -36,6 +37,7 @@ OPENKIS_ENABLE_PROXY=$([ "$CUSTOM" = lombardia ] && echo 1 || echo 0)
 EOF
 dc() { docker compose -p openkis-smoke --env-file "$ENVF" -f docker-compose.yml -f docker-compose.build.yml "$@"; }
 cleanup() { dc down -v --remove-orphans >/dev/null 2>&1 || true; rm -rf "$WORK"; }
+[ "${SMOKE_KEEP:-0}" = 1 ] && cleanup() { echo "stack left running: docker compose -p openkis-smoke --env-file $ENVF -f docker-compose.yml -f docker-compose.build.yml down -v   # to remove it"; }
 trap cleanup EXIT
 
 fail() { echo "SMOKE FAIL: $*" >&2; dc logs --tail 80 web >&2 || true; exit 1; }

@@ -18,8 +18,8 @@
 #      save it; after the removal, the editor is refused again;
 #   4. a record without edit groups can be edited by the editor;
 #   5. with the setting off, the editor may edit any record (old behaviour);
-#   6. anonymous, read-only and read-write users get no edit form, can't save
-#      and can't add enabled users;
+#   6. anonymous, and read-only and read-write users without write access to
+#      the section, get no edit form, can't save and can't add enabled users;
 #   lombardia: 7. on a BS cave the editor (RW_BG only) gets the province
 #      refusal on save; 8. enabled on that cave by the administrator, the
 #      editor can save it (the province check accepts enabled users).
@@ -65,8 +65,20 @@ UA=$UA_DESKTOP
 # --- setup ---------------------------------------------------------------------
 # the editor: in the section's first insert group, RW_BG (Lombardia province
 # BG) and r_caves; on Lombardia these are the curator's groups
-GINS=$(sqlv "SELECT varvalue FROM fncf_caves WHERE varname = 'groupinsert'")
-GINS=${GINS%%,*}
+GINS_ALL=$(sqlv "SELECT varvalue FROM fncf_caves WHERE varname = 'groupinsert'")
+GADM=$(sqlv "SELECT varvalue FROM fncf_caves WHERE varname = 'groupadmin'")
+GINS=${GINS_ALL%%,*}
+in_groups() { # in_groups <user groups csv> <allowed groups csv>: any in common
+    local g
+    IFS=, read -ra allowed <<< "$2"
+    for g in "${allowed[@]}"; do
+        [ -n "$g" ] && [[ ",$1," == *",$g,"* ]] && return 0
+    done
+    return 1
+}
+# FNDBVIEW::CanEditRecords for a logged-in non-admin: write access to the section
+can_write() { [ -z "$GINS_ALL" ] || in_groups "$1" "$GINS_ALL" || in_groups "$1" "$GADM"; }
+declare -A ROLE_GROUPS=([read-only]="r_caves" [read-write]="RW_BG,r_caves")
 EDITOR=test_editor
 EDITOR_GROUPS=$(echo "$GINS,RW_BG,r_caves" | sed 's/^,//')
 ORIG_FLAG=$(sqlv "SELECT varvalue FROM fncf_caves WHERE varname = 'enable_permissions_edit_each_records'")
@@ -78,7 +90,7 @@ NAME="permtest-$(date +%s)"
 cleanup() {
     sqlv "UPDATE fncf_caves SET varvalue = '$ORIG_FLAG' WHERE varname = 'enable_permissions_edit_each_records'" >/dev/null
     sqlv "DELETE FROM ctl_caves WHERE id IN ('$ID', '$ID_BS')" >/dev/null
-    sqlv "DELETE FROM fieldusers WHERE username = '$EDITOR'" >/dev/null
+    sqlv "DELETE FROM fieldusers WHERE username = '$EDITOR' OR table_unirecid IN ('$ID', '$ID_BS') AND tablename = 'ctl_caves'" >/dev/null
     rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -182,6 +194,7 @@ post_save() { # post_save <who> <id> <new name>
 for device in desktop android; do
     [ $device = desktop ] && UA=$UA_DESKTOP || UA=$UA_ANDROID
     t=$device
+    sqlv "DELETE FROM fieldusers WHERE table_unirecid IN ('$ID', '$ID_BS') AND tablename = 'ctl_caves'" >/dev/null
     for who in editor admin read-only read-write; do
         check "$t: $who logs in" login "$who"
     done
@@ -236,6 +249,11 @@ for device in desktop android; do
     # 6. users without write access, on a record without edit groups
     set_groups "$ID" ""
     for who in anonymous read-only read-write; do
+        if [ "$who" != anonymous ] && can_write "${ROLE_GROUPS[$who]}"; then
+            # e.g. the generic sites, where the caves section has no insert group
+            pass "$t 6: $who may write in this section, not tested as a reader"
+            continue
+        fi
         fetch "$who" "/index.php?mod=caves&op=edit&id=$ID" >/dev/null
         check "$t 6: $who gets no edit form" bash -c "! grep -q 'name=\"xmetadbsave\"' '$WORK/page'"
         post_save "$who" "$ID" "$NAME-hacked" >/dev/null
