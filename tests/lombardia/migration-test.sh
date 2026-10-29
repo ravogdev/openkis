@@ -19,7 +19,7 @@
 #   MIGRATION_DUMP=/path/to/old-site-dump.sql[.gz] tests/lombardia/migration-test.sh
 #   MIGRATION_KEEP=1 ...     # leave the stack running at the end, to look at it
 # When node and Playwright are installed (require('playwright') works), it also
-# runs tests/lombardia/browser-matrix.js and tests/lombardia/map-icons.js:
+# runs tests/lombardia/browser-matrix.js, map-icons.js and map-baselayer.js:
 # real browser, desktop and Pixel 7, every role (BROWSER=0 skips them).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -140,6 +140,10 @@ if [ "${BROWSER:-1}" = 1 ] && command -v node >/dev/null && node -e "require('pl
     db -e "DELETE FROM ctl_caves WHERE name LIKE 'icon-test-%'"
     dc exec -T web touch -c /var/www/html/misc/fndatabase/ctl_caves/updated
     ok "map icon checks"
+
+    echo "== base layer of a map link (desktop, Pixel 7; every role)"
+    BASE="$BASE" node "$ROOT/tests/lombardia/map-baselayer.js" || fail "map base layer checks"
+    ok "map base layer checks"
 fi
 
 echo "== runtime"

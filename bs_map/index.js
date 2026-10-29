@@ -52,7 +52,6 @@ window.setTimeout(function () {
     var point = getUrlVar("point", false);
     var num = getUrlVar("num", false);
     var layers = getUrlVar("layers", false);
-    var baselayer = getUrlVar("baselayer", false);
     var table = getUrlVar("table", false);
     try {
         lat = lat.replace(",", ".");
@@ -165,10 +164,8 @@ window.setTimeout(function () {
     } catch (e) {
 
     }
-    if (baselayer)
-    {
-        $("input[value='" + baselayer + "']").click();
-    }
+    // the base layer of the link (?basemap= or ?baselayer=) is selected by
+    // OPS_Map.HtmlLayerItemsBaselayers when the layer switcher is built below
     for (var i in OPS_Map.toinclude)
     {
         splx.include(OPS_Map.toinclude[i]);
