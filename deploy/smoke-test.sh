@@ -144,6 +144,11 @@ SITE_SQL="$DC exec -T db mariadb -N -uopenkis -psmoke-db-pass openkis" SITE_PHP=
     ../tests/regional/site-checks.sh "$BASE" "$CUSTOM" || fail "role and regional checks"
 ok "role and regional checks"
 
+echo "== per-record edit permissions (${CUSTOM:-generic})"
+SITE_SQL="$DC exec -T db mariadb -N -uopenkis -psmoke-db-pass openkis" SITE_PHP="$DC exec -T web php" \
+    ../tests/regional/record-permissions.sh "$BASE" "$CUSTOM" || fail "record permission checks"
+ok "record permission checks"
+
 echo "== runtime"
 dc exec -T web php -r 'exit(extension_loaded("apcu") ? 0 : 1);' || fail "APCu not loaded"
 ok "APCu loaded"

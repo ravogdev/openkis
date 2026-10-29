@@ -116,6 +116,11 @@ SITE_SQL="$DC exec -T db mariadb -N -uopenkis -pmigration-db-pass openkis" SITE_
     "$ROOT/tests/regional/site-checks.sh" "$BASE" lombardia || fail "role and regional checks"
 ok "role and regional checks"
 
+echo "== per-record edit permissions (lombardia)"
+SITE_SQL="$DC exec -T db mariadb -N -uopenkis -pmigration-db-pass openkis" SITE_PHP="$DC exec -T web php" \
+    "$ROOT/tests/regional/record-permissions.sh" "$BASE" lombardia || fail "record permission checks"
+ok "record permission checks"
+
 if [ "${BROWSER:-1}" = 1 ] && command -v node >/dev/null && node -e "require('playwright')" 2>/dev/null; then
     echo "== browser (desktop, Pixel 7; every role)"
     BASE="$BASE" node "$ROOT/tests/lombardia/browser-matrix.js" || fail "browser checks"
