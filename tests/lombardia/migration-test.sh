@@ -19,8 +19,8 @@
 #   MIGRATION_DUMP=/path/to/old-site-dump.sql[.gz] tests/lombardia/migration-test.sh
 #   MIGRATION_KEEP=1 ...     # leave the stack running at the end, to look at it
 # When node and Playwright are installed (require('playwright') works), it also
-# runs tests/lombardia/browser-matrix.js: real browser, desktop and Pixel 7,
-# every role (BROWSER=0 skips it).
+# runs tests/lombardia/browser-matrix.js and tests/lombardia/map-icons.js:
+# real browser, desktop and Pixel 7, every role (BROWSER=0 skips them).
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT/deploy"
@@ -120,6 +120,21 @@ if [ "${BROWSER:-1}" = 1 ] && command -v node >/dev/null && node -e "require('pl
     echo "== browser (desktop, Pixel 7; every role)"
     BASE="$BASE" node "$ROOT/tests/lombardia/browser-matrix.js" || fail "browser checks"
     ok "browser checks"
+
+    echo "== map icons grow with the zoom (desktop, Pixel 7; every role)"
+    # three made-up caves 30 m apart, so the fixture's empty cave table has
+    # points to draw (descending, ascending and horizontal icons); the KML
+    # cache is told the table changed
+    db -e "DELETE FROM ctl_caves WHERE name LIKE 'icon-test-%';
+        INSERT INTO ctl_caves (id, code, name, latitude, longitude, depth_positive, depth_negative, depth_total) VALUES
+        ('990001', 'LOT9901', 'icon-test-1', '45.900000', '9.700000', '0', '-40', '40'),
+        ('990002', 'LOT9902', 'icon-test-2', '45.900270', '9.700000', '25', '0', '25'),
+        ('990003', 'LOT9903', 'icon-test-3', '45.900000', '9.700390', '0', '0', '0');"
+    dc exec -T web touch -c /var/www/html/misc/fndatabase/ctl_caves/updated
+    BASE="$BASE" ICON_CAVE=icon-test-1 node "$ROOT/tests/lombardia/map-icons.js" || fail "map icon checks"
+    db -e "DELETE FROM ctl_caves WHERE name LIKE 'icon-test-%'"
+    dc exec -T web touch -c /var/www/html/misc/fndatabase/ctl_caves/updated
+    ok "map icon checks"
 fi
 
 echo "== runtime"

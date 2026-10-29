@@ -124,8 +124,21 @@ jobs:
         if: steps.base-images.outputs.cache-hit == 'true'
         run: docker load -q -i ~/base-images.tar && deploy/base-images.sh --mark
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # the browser checks of the migration test (browser-matrix.js,
+      # map-icons.js) run when require('playwright') works
+      - name: Playwright and Chromium for the browser checks
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/pw" playwright@1.48.2
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+
       - name: Old Lombardia database -> migration -> regional updates -> checks
         run: tests/lombardia/migration-test.sh
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
 
   sync:
     needs: [smoke-test, lombardia-migration]

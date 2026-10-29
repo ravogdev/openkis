@@ -8,7 +8,8 @@ top of the generic ones. None of them uses the site's data in CI.
 | `deploy/smoke-test.sh` with `SMOKE_CUSTOM=lombardia`: fresh install with the Lombardia customisation, then `tests/regional/site-checks.sh` | CI (pull requests into `develop`, pushes to `develop`, image publishing) |
 | `migration-test.sh`: the old Lombardia schema and settings → `deploy/db-image/lombardia-migrate.sql` → regional updates → checks | CI, same workflows |
 | `migration-test.sh` with `MIGRATION_DUMP=<real dump>` | locally only |
-| `browser-matrix.js`: real browser, desktop and Pixel 7, every role | locally, when Playwright is installed |
+| `browser-matrix.js`: real browser, desktop and Pixel 7, every role | CI (inside `migration-test.sh`), and locally when Playwright is installed |
+| `map-icons.js`: the caves map icons grow with the zoom, desktop and Pixel 7, every role | CI (inside `migration-test.sh`, on three made-up caves), and locally when Playwright is installed |
 
 Never run any of them against the production site: they create test accounts
 and insert test records. The scripts refuse a `speleolombardia` address.
@@ -40,6 +41,25 @@ Lombardia checks run with `lombardia`):
 `migration-test.sh` also checks that every regional update was applied, that
 none failed (a failed update stops the later ones), and that the site opens
 without the setup wizard and without PHP errors in the container log.
+
+`map-icons.js` checks that the KML point icons grow with the zoom
+(`OPS_Map.scaleIconsWithZoom`, upstream c6fbe01). For a desktop browser and
+Pixel 7 (touch), anonymous and each test account, on the caves map section
+with the base layers hidden (no tile server can change the result):
+
+- from zoom 11 to 19, the drawn size of every cave icon in view: the KML size
+  up to zoom 13, then 0.3 times that size more per level, up to 3 times and at
+  most 40 px (a bigger KML icon stays as it is);
+- on screenshots with only one cave drawn, the icon is as wide on the screen
+  at zoom 15 and 18, compared with zoom 12, as its size says (within 15%);
+- at zoom 18 a click (a tap on the phone) on the cave opens its popup;
+- on the map of selected caves (`filter_code`, the cave sheet map), which
+  shows the names, the name starts beside the icon at zoom 13, 16 and 19;
+- no JavaScript errors. A role whose map leaves out the caves layer (#99) is
+  reported as skipped, after checking that the map access says so.
+
+In CI it runs on three made-up caves (`icon-test-1` to `3`, inserted and
+removed by `migration-test.sh`), because the fixture has no caves.
 
 ## The fixture
 
@@ -80,10 +100,14 @@ MIGRATION_KEEP=1 MIGRATION_DUMP=... tests/lombardia/migration-test.sh   # keep t
 
 With the real dump the site's own users are kept and the test accounts are
 added to them. When `node` and Playwright are installed it also runs
-`browser-matrix.js` (`BROWSER=0` skips it). The browser pass can also run on
+`browser-matrix.js` and `map-icons.js` (`BROWSER=0` skips them). The browser pass can also run on
 its own against any disposable copy, after `site-checks.sh` has created the
 test accounts:
 
 ```sh
 BASE=http://localhost:8098 OUT=/tmp/shots node tests/lombardia/browser-matrix.js
+BASE=http://localhost:8098 OUT=/tmp/icons node tests/lombardia/map-icons.js
 ```
+
+`map-icons.js` saves the map at zoom 12, 15 and 18, with the popup at zoom 18
+and the selected caves map at zoom 19, for each device and role, to look at.
