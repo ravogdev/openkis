@@ -139,6 +139,11 @@ login() { # login <role>
 }
 
 FIRST_CAVE=$(sqlv "SELECT id FROM ctl_caves ORDER BY id LIMIT 1")
+# a cave with no view restriction, for the card sheet checks
+PUBLIC_CAVE=$(sqlv "SELECT id FROM ctl_caves WHERE COALESCE(groupview, '') = '' AND COALESCE(recorddeleted, 0) = 0 ORDER BY id LIMIT 1")
+# and a closed one and a tourist one (S, Y or X means yes), for the header badges
+CLOSED_CAVE=$(sqlv "SELECT id FROM ctl_caves WHERE COALESCE(groupview, '') = '' AND COALESCE(recorddeleted, 0) = 0 AND closed IN ('S', 'Y', 'X') ORDER BY id LIMIT 1")
+TOURIST_CAVE=$(sqlv "SELECT id FROM ctl_caves WHERE COALESCE(groupview, '') = '' AND COALESCE(recorddeleted, 0) = 0 AND tourist IN ('S', 'Y', 'X') ORDER BY id LIMIT 1")
 
 # --- 2. pages per device and role ----------------------------------------------
 for device in desktop android; do
@@ -180,6 +185,26 @@ for device in desktop android; do
             check "$tag: cave view no PHP errors" [ "$(php_errors)" = 0 ]
             if ! can_view "$role" caves; then
                 check "$tag: cave view denied" no_permission
+            fi
+        fi
+        # cave sheet in thematic cards with a side column (f1fc559); on Lombardia
+        # every field has a card (extra/openkis/custom/lombardia/viewheader_cards_caves.php)
+        if [ -n "$PUBLIC_CAVE" ] && can_view "$role" caves; then
+            get "/index.php?mod=caves&op=view&id=$PUBLIC_CAVE" >/dev/null
+            check "$tag: cave sheet in cards" grep -q 'class="card openkis-card mb-3" id="card_location"' "$WORK/page"
+            check "$tag: cave sheet side column" grep -q 'class="col-lg-4 openkis-sheet-side"' "$WORK/page"
+            check "$tag: cave sheet no PHP errors" [ "$(php_errors)" = 0 ]
+            if [ -n "$CLOSED_CAVE" ]; then
+                get "/index.php?mod=caves&op=view&id=$CLOSED_CAVE" >/dev/null
+                check "$tag: closed cave sheet shows the closed badge" grep -q 'openkis-sheet-badges.*openkis-badge-closed' "$WORK/page"
+            fi
+            if [ -n "$TOURIST_CAVE" ]; then
+                get "/index.php?mod=caves&op=view&id=$TOURIST_CAVE" >/dev/null
+                check "$tag: tourist cave sheet shows the tourist badge" grep -q 'openkis-sheet-badges.*badge badge-info' "$WORK/page"
+            fi
+            get "/index.php?mod=caves&op=view&id=$PUBLIC_CAVE" >/dev/null
+            if [ "$REGION" = lombardia ]; then
+                check "$tag: cave sheet has no other data card" bash -c "! grep -q 'id=\"card_other_data\"' '$WORK/page'"
             fi
         fi
         code=$(get '/index.php?fnapp=controlcenter')

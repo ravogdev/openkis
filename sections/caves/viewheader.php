@@ -144,19 +144,24 @@ if (!empty($values['areas']))
     $placetxt .= ($placetxt != "" ? " &middot; " : "") . FN_Translate("area") . " " . strip_tags($values['areas']);
 }
 $badges = "";
-if (isset($row['closed']) && ($row['closed'] == "Y" || $row['closed'] == "S"))
+// yes/no fields are stored as Y, S (Lombardia) or X (radio "X,"): any of them means yes
+$isyes = function ($field) use ($row) {
+    return isset($row[$field]) && in_array((string) $row[$field], array("Y", "S", "X"), true);
+};
+// closed: S, Y or X is closed, N is open, an empty value shows no badge (same rule as the list)
+if ($isyes('closed'))
     $badges .= "<span class=\"badge badge-danger openkis-badge-closed\">" . FN_Translate("closed cave") . "</span> ";
-elseif (isset($row['closed']))
+elseif (isset($row['closed']) && $row['closed'] === "N")
     $badges .= "<span class=\"badge badge-success openkis-badge-open\">" . FN_Translate("open cave") . "</span> ";
-if (!empty($row['destroyed']) && $row['destroyed'] == "Y")
+if ($isyes('destroyed'))
     $badges .= "<span class=\"badge badge-dark\">" . FN_Translate("destroyed") . "</span> ";
 elseif (!empty($row['destroyed']) && $row['destroyed'] == "P")
     $badges .= "<span class=\"badge badge-secondary\">" . FN_Translate("partially destroyed") . "</span> ";
-if (!empty($row['tourist']) && $row['tourist'] == "Y")
+if ($isyes('tourist'))
     $badges .= "<span class=\"badge badge-info\">" . FN_Translate("tourist cave") . "</span> ";
-if (!empty($row['archeological']) && $row['archeological'] == "Y")
+if ($isyes('archeological'))
     $badges .= "<span class=\"badge badge-warning\">" . FN_Translate("archeological") . "</span> ";
-if (!empty($row['marine']) && $row['marine'] == "Y")
+if ($isyes('marine'))
     $badges .= "<span class=\"badge badge-primary\">" . FN_Translate("marine") . "</span> ";
 if (!empty($row['status']))
     $badges .= "<span class=\"badge badge-light border\">" . FN_Translate($row['status']) . "</span> ";
