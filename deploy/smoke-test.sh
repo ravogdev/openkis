@@ -4,7 +4,8 @@
 # and its .env are not touched):
 #   no SQL dump anywhere in the image, fresh install via the setup wizard,
 #   home page, caves list, caves map, every table of the code (create-schema.php),
-#   control center, demo cave import, Refresh map data, map exports, APCu,
+#   control center, demo cave import, Refresh map data, map exports, map proxy
+#   (blocked, or with Lombardia: refuses every host but the map layer hosts), APCu,
 #   role and regional checks (tests/regional/site-checks.sh: one account per
 #   role, desktop and Android, inserts; extra checks for Lombardia),
 #   no PHP errors in the pages or the container log.
@@ -31,6 +32,7 @@ OPENKIS_DB_PASSWORD=smoke-db-pass
 MARIADB_ROOT_PASSWORD=smoke-root-pass
 OPENKIS_HTTP_PORT=$PORT
 OPENKIS_CUSTOM=$CUSTOM
+OPENKIS_ENABLE_PROXY=$([ "$CUSTOM" = lombardia ] && echo 1 || echo 0)
 EOF
 dc() { docker compose -p openkis-smoke --env-file "$ENVF" -f docker-compose.yml -f docker-compose.build.yml "$@"; }
 cleanup() { dc down -v --remove-orphans >/dev/null 2>&1 || true; rm -rf "$WORK"; }
@@ -116,6 +118,25 @@ for path in /openkis_kml.php /openkis_markers.js.php; do
     [ "$(php_errors "$WORK/page")" = 0 ] || fail "$path shows PHP errors"
     ok "$path 200"
 done
+
+echo "== map proxy"
+# no outside requests here: only the refusals (the layer hosts are tested by hand)
+if [ "$CUSTOM" = lombardia ]; then
+    for url in https://example.com/ http://169.254.169.254/latest/meta-data/ http://db:3306/ \
+        http://sgi2.isprambiente.it:22/ http://user:pass@sgi2.isprambiente.it/ \
+        http://sgi2.isprambiente.it.example.com/ file:///etc/passwd; do
+        code=$(get "/openkis_proxy.php/$url" --path-as-is)
+        [ "$code" = 403 ] || fail "openkis_proxy.php fetched $url ($code)"
+    done
+    ok "openkis_proxy.php refuses hosts that are not map layer hosts"
+    code=$(get "/openkis_proxy.php/" --path-as-is)
+    [ "$code" = 400 ] || fail "openkis_proxy.php without an address returned $code"
+    ok "openkis_proxy.php without an address 400"
+else
+    code=$(get "/openkis_proxy.php/https://example.com/" --path-as-is)
+    [ "$code" = 403 ] || fail "openkis_proxy.php not blocked with OPENKIS_ENABLE_PROXY=0 ($code)"
+    ok "openkis_proxy.php blocked (OPENKIS_ENABLE_PROXY=0)"
+fi
 
 echo "== roles and region (${CUSTOM:-generic})"
 DC="docker compose -p openkis-smoke --env-file $ENVF -f docker-compose.yml -f docker-compose.build.yml"

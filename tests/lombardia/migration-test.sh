@@ -35,6 +35,7 @@ OPENKIS_DB_PASSWORD=migration-db-pass
 MARIADB_ROOT_PASSWORD=migration-root-pass
 OPENKIS_HTTP_PORT=$PORT
 OPENKIS_CUSTOM=lombardia
+OPENKIS_ENABLE_PROXY=1
 EOF
 DC="docker compose -p openkis-migration --env-file $ENVF -f docker-compose.yml -f docker-compose.build.yml"
 dc() { $DC "$@"; }
